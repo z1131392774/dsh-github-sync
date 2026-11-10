@@ -2,6 +2,21 @@
 
 ## 未发布
 
+### 文档体系重建（沿用 agents-template）
+
+- 新增 `AGENTS.md`、`docs/AGENTS.md`、`docs/development.md`、`scripts/AGENTS.md`、`.agents/notes/`、`.agents/skills/pre-push-checks/`：根目录只留常驻规则，标准、流程、决策记录各自分层。
+- 文档改为**英文为源、`_zh.md` 为中文译本**的双语结构，两份文件互相链接；新增 `scripts/check-docs.mjs` 与 `scripts/doc-budgets.json`，把词预算、双语配对、本地链接、标题锚点、结尾换行做成门禁（`npm run check`）。
+- README 拆成落地页 + `docs/usage.md`、`docs/how-it-works.md`、`docs/troubleshooting.md`；`TUTORIAL.md` 并入 `docs/setup.md`，`PUBLISHING.md` 并入 `docs/releasing.md`，`SUBMIT.md` 与 `submit/` 移除；`README.en.md` 与 `README_zh.md` 互换角色。
+- 新增 `.github/workflows/ci.yml`：Node 22 上跑 `npm run check` 与 `npm test`。
+- `engines.node` 由 `>=20` 改为 `>=22.15.0`：`lib/zstdframe.mjs` 依赖 `node:zlib` 的 zstd 函数，Node 20 没有。
+
+### 测试可移植
+
+- 新增 `tools/fixture.mjs`：本机没有真实会话时现造一条，测试不再依赖某台机器上的绝对路径。
+- `tools/selftest.mjs`、`tools/test-upload-plan.mjs`、`tools/test-force.mjs`、`tools/test-crossplatform.mjs` 改用夹具；`npm test` 的 9 个离线脚本在任何机器上全绿。
+
+### 其它
+
 - 新增产品配图（`docs/`：主图、面板截图、工作原理、功能速览、三步上手），README 中英版已接入。图片用绝对 raw 地址引用，GitHub、npm 页、插件市场都能正常显示。
 
 ## 0.5.1

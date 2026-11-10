@@ -1,17 +1,17 @@
 {
   "name": "dsh-github-sync",
   "version": "0.5.1",
-  "description": "把 DSH 会话与工作区文件夹同步到私有 GitHub 仓，用于跨设备接力（Windows / macOS）。",
+  "description": "Sync DSH sessions and workspace files to a private GitHub repository, for hand-over between machines.",
   "type": "module",
   "license": "MIT",
   "author": "mount9527",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mount9527/dsh-github-sync.git"
+    "url": "git+https://github.com/z1131392774/dsh-github-sync.git"
   },
-  "homepage": "https://github.com/mount9527/dsh-github-sync#readme",
+  "homepage": "https://github.com/z1131392774/dsh-github-sync#readme",
   "bugs": {
-    "url": "https://github.com/mount9527/dsh-github-sync/issues"
+    "url": "https://github.com/z1131392774/dsh-github-sync/issues"
   },
   "keywords": [
     "dsh",
@@ -23,7 +23,7 @@
     "handoff"
   ],
   "engines": {
-    "node": ">=20.0.0",
+    "node": ">=22.15.0",
     "dsh": ">=0.2.1-rc.5"
   },
   "icon": "icon.svg",
@@ -40,13 +40,17 @@
     "locale/*.json",
     "lib/*.mjs",
     "README.md",
-    "README.en.md",
-    "TUTORIAL.md",
-    "RELEASE_NOTES.md",
+    "README_zh.md",
     "CHANGELOG.md",
+    "RELEASE_NOTES.md",
     "LICENSE",
-    "PUBLISHING.md"
+    "docs/*.md",
+    "docs/*.png"
   ],
+  "scripts": {
+    "check": "node scripts/check-docs.mjs",
+    "test": "node tools/selftest.mjs && node tools/test-upload-plan.mjs && node tools/test-force.mjs && node tools/test-multidevice.mjs && node tools/test-crossplatform.mjs && node tools/test-guards.mjs && node tools/test-filesync.mjs && node tools/test-boundaries.mjs && node tools/audit-safety.mjs"
+  },
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"

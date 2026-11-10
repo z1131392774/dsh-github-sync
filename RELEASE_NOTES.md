@@ -15,7 +15,7 @@
 ## 安装
 
 - 插件市场搜索 `dsh-github-sync`
-- 详细配置见 [TUTORIAL.md](TUTORIAL.md)：为什么必须私有仓、令牌怎么建、怎么填
+- 详细配置见 [docs/setup.md](docs/setup.md)：为什么必须私有仓、令牌怎么建、怎么填
 
 ## 平台支持
 
