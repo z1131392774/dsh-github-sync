@@ -44,7 +44,9 @@ window.__ModuleLoader__.load({
       sessions: 'sessions', nextStep: 'Upload/download arrives in the next build',
     };
 
-    const api = (p) => new URL(String(p).replace(/^\/+/, ''), document.baseURI).pathname;
+    // 注意：必须保留查询串。早期版本只取 .pathname，导致 /sessions?cwd=、/progress?id=、
+    // /history?limit= 的参数全部丢失（切工作区列表不变、传输进度不动）。
+    const api = (p) => { const u = new URL(String(p).replace(/^\/+/, ''), document.baseURI); return u.pathname + u.search; };
     const getJson = async (p) => (await fetch(api(p), { cache: 'no-store' })).json();
     const postJson = async (p, body) => {
       const res = await fetch(api(p), {
