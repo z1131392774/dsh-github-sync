@@ -4,10 +4,12 @@ import { planDownload, planUpload, localSessionFile } from '../lib/sync.mjs';
 import { listSessionsForCwd } from '../lib/localsessions.mjs';
 import { rewriteSession } from '../lib/sessionlog.mjs';
 import { walkFrames } from '../lib/zstdframe.mjs';
+import { installFixture } from './fixture.mjs';
 
-const cwd = 'E:\\ruanjianxiazai\\deepseek\\work';
+const fixture = installFixture({ cwd: 'E:\\ruanjianxiazai\\deepseek\\work' });
+const cwd = fixture.cwd;
 const all = listSessionsForCwd(cwd);
-const target = all.find((s) => s.title && s.bytes > 20000) ?? all[0];
+const target = all[0];
 const localBuf = readFileSync(localSessionFile(cwd, target.id));
 const sessionPathInRepo = `work/sessions/${target.id}.jsonl.zstd`;
 

@@ -1,12 +1,32 @@
-// 用假 client 跑一遍上传计划（不联网），验证清单/索引/README 的组装
-import { planUpload, executeUpload, localSessionFile } from '../lib/sync.mjs';
-import { listSessionsForCwd } from '../lib/localsessions.mjs';
-import { existsSync } from 'node:fs';
+// 用假 client 跑一遍上传计划（不联网），验证清单/索引/README 的组装。
+// 夹具在临时 DSH_HOME 里现造，不依赖本机真实会话，换机器和 CI 都能跑。
+import { mkdtempSync, mkdirSync, writeFileSync, existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { projectKey } from '../lib/projectkey.mjs';
+import { encodeFrames } from '../lib/zstdframe.mjs';
 
-const cwd = 'E:\\ruanjianxiazai\\deepseek\\work';
+const home = mkdtempSync(join(tmpdir(), 'dsh-sync-plan-'));
+process.env.DSH_HOME = home;
+
+const { planUpload, executeUpload, localSessionFile } = await import('../lib/sync.mjs');
+const { listSessionsForCwd } = await import('../lib/localsessions.mjs');
+
+const cwd = join(home, 'workspace');
+const id = 'session-11111111-1111-4111-8111-111111111111';
+const dir = join(home, 'sessions', projectKey(cwd), id);
+mkdirSync(dir, { recursive: true });
+const fixture = encodeFrames([
+  `${JSON.stringify({ type: 'session', version: 4, id, cwd, createdAt: 1, updatedAt: 1 })}\n`,
+  `${JSON.stringify({ type: 'session/title', data: { title: '上传计划夹具' } })}\n`,
+  `${JSON.stringify({ type: 'user/message', text: 'hello' })}\n`,
+  `${JSON.stringify({ type: 'assistant/message', text: 'hi' })}\n`,
+]);
+writeFileSync(join(dir, 'session.v4.jsonl.zstd'), fixture);
+
 const all = listSessionsForCwd(cwd);
-const target = all.find((s) => s.title && s.bytes > 20000) ?? all[0];
-if (!target) { console.error('no session'); process.exit(1); }
+const target = all.find((s) => s.id === id);
+if (!target) { console.error('夹具会话没被扫到:', all.map((s) => s.id)); process.exit(1); }
 console.log('目标会话:', target.id, target.title, target.bytes + 'B');
 console.log('本地路径存在:', existsSync(localSessionFile(cwd, target.id)));
 
@@ -18,7 +38,7 @@ const stub = {
 };
 
 const plan = await planUpload({
-  client: stub, cwd, ids: [target.id, 'session-does-not-exist'],
+  client: stub, cwd, ids: [id, 'session-does-not-exist'],
   deviceId: 'dev-1', deviceName: 'DESKTOP-A', projectTitle: 'work',
 });
 

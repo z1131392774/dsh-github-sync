@@ -1,7 +1,8 @@
 // 跨平台：会话目录名与当前平台算法不一致时，能否按会话头里的 cwd 找回来
-import { mkdirSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { sampleSession } from './fixture.mjs';
 
 const HOME = join(tmpdir(), 'dsh-xplat-' + Date.now());
 process.env.DSH_HOME = HOME;
@@ -17,10 +18,10 @@ const ok = (label, cond, extra = '') => {
   console.log(`${cond ? '  ok  ' : ' FAIL '} ${label}${extra ? ' · ' + extra : ''}`);
 };
 
-// 用一条真实会话做样本，把头帧 cwd 改成"另一台机器的工作区"
-const REAL = process.env.SYNC_SAMPLE || 'C:\\Users\\14507\\.dsh\\sessions\\--E-ruanjianxiazai-deepseek-work--';
-const sampleBuf = readFileSync(join(REAL, 'session-06f8ae05-3a38-43e8-9dd6-7e09d7bc1990', 'session.v4.jsonl.zstd'));
+// 样本会话：本机有真实会话就用它，没有就现造；id 归一化，后面的常量才成立
+const SAMPLE_ID = 'session-06f8ae05-3a38-43e8-9dd6-7e09d7bc1990';
 const cwdA = 'E:\\ruanjianxiazai\\deepseek\\work';
+const sampleBuf = rewriteSession(sampleSession({ id: SAMPLE_ID, cwd: cwdA }), { newId: SAMPLE_ID, newCwd: cwdA }).buffer;
 const macCwd = '/Users/lifeng/projects/work';
 const rewritten = rewriteSession(sampleBuf, { newCwd: macCwd }).buffer;
 
