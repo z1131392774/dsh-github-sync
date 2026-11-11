@@ -153,12 +153,15 @@ for (const narrow of [false, true]) {
 
   if (narrow) {
     ok('窄屏整页滚动', rootStyle.overflowY === 'auto', JSON.stringify(rootStyle.overflowY));
+    ok('窄屏滚动条宽度常驻，顶栏按钮不横跳', rootStyle.scrollbarGutter === 'stable', JSON.stringify(rootStyle.scrollbarGutter));
     ok('窄屏列表不再内部滚动', innerLists === 0, '实际 ' + innerLists);
     ok('窄屏动作条吸底', stickyBottom >= 1, '实际 ' + stickyBottom);
     ok('窄屏出现页签开关', texts.includes('本机 ·') && texts.includes('仓库 ·'));
     ok('窄屏首屏只有本机会话', !texts.includes('远端这条'));
   } else {
     ok('宽屏两栏各自滚动', innerLists === 2, '实际 ' + innerLists);
+    const gutters = styled.filter((s) => s.overflow === 'auto' && s.scrollbarGutter === 'stable').length;
+    ok('宽屏两栏滚动条槽位常驻，切页签不横跳', gutters === 2, '实际 ' + gutters);
     ok('宽屏有下载到下拉', texts.includes('下载到'));
     ok('宽屏两个主操作都在', texts.includes('上传到仓库') && texts.includes('下载到本机'));
   }

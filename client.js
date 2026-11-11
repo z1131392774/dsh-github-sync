@@ -706,6 +706,8 @@ window.__ModuleLoader__.load({
         style: {
           display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0,
           overflowY: narrow ? 'auto' : 'hidden',
+          // 滚动条出现/消失时不要挤动顶栏右侧那排按钮
+          scrollbarGutter: narrow ? 'stable' : 'auto',
           WebkitOverflowScrolling: 'touch',
           padding: narrow ? '10px 10px 12px' : '14px 16px', gap: narrow ? 8 : 12, position: 'relative',
         },
@@ -967,7 +969,8 @@ window.__ModuleLoader__.load({
               h(MiniBtn, { onClick: selectUnsynced }, '选未同步'),
               h(MiniBtn, { onClick: clearSelection }, '清空'),
             ),
-            h('div', { style: { flex: narrow ? '0 0 auto' : 1, minHeight: 0, overflow: narrow ? 'visible' : 'auto' } },
+            h('div', { style: { flex: narrow ? '0 0 auto' : 1, minHeight: 0, overflow: narrow ? 'visible' : 'auto',
+              scrollbarGutter: narrow ? 'auto' : 'stable' } },
               loading ? h('div', { style: { padding: 12, fontSize: 12, color: C.dim } }, tt('loading'))
                 : localCount === 0 ? h('div', { style: { padding: 12, fontSize: 12, color: C.dim } }, tt('emptyLocal'))
                   : visibleSessions.map((s) => {
@@ -1062,7 +1065,8 @@ window.__ModuleLoader__.load({
                 },
               }, workspaces.map((w) => h('option', { key: w.id, value: w.path }, `${w.title} · ${w.sessionCount}`))),
             ),
-            h('div', { style: { flex: narrow ? '0 0 auto' : 1, minHeight: 0, overflow: narrow ? 'visible' : 'auto' } },
+            h('div', { style: { flex: narrow ? '0 0 auto' : 1, minHeight: 0, overflow: narrow ? 'visible' : 'auto',
+              scrollbarGutter: narrow ? 'auto' : 'stable' } },
               !connected ? h('div', { style: { padding: 12, fontSize: 12, color: C.dim } }, tt('noRepo'))
                 : (visibleRemote.length + (status?.enableFiles ? (remote.files || []).length : 0)) === 0
                   ? h('div', { style: { padding: 12, fontSize: 12, color: C.dim } }, tt('emptyRemote'))
