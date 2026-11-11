@@ -33,7 +33,7 @@ plan builder 在要紧的意义上是纯的：它读本地磁盘和远端索引�
 1. **聚焦。** `node tools/selftest.mjs` 过一遍纯逻辑——帧解析、头部重写、正文比对、路径编码、guard 函数。
 2. **计划层测试**，改了动作怎么定就跑：`node tools/test-upload-plan.mjs`、`node tools/test-force.mjs`、`node tools/test-guards.mjs`、`node tools/test-filesync.mjs`。
 3. **安全审计**，加了路由、import 或网络调用就跑：`node tools/audit-safety.mjs`。
-4. **在 DSH 里手跑**，改动影响用户看到的东西时：重载插件，打开面板，把那条路径走一遍。
+4. **面板渲染测试**，动了布局或文案就跑：`node tools/test-render.mjs` 拿假 React 把面板渲染一遍，检查宽窄两态各自的契约（手机上只有一个滚动面、动作条吸底、设置面板落在哪）。它看不到像素，过了也还是要在 DSH 里重载一次。
 5. **文档：** `npm run check`。
 
 报告命令和它打印了什么。「应该能过」不算结果。有东西在这里跑不了，点名，说为什么。

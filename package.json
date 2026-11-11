@@ -49,7 +49,7 @@
   ],
   "scripts": {
     "check": "node scripts/check-docs.mjs",
-    "test": "node tools/selftest.mjs && node tools/test-upload-plan.mjs && node tools/test-force.mjs && node tools/test-multidevice.mjs && node tools/test-crossplatform.mjs && node tools/test-guards.mjs && node tools/test-filesync.mjs && node tools/test-boundaries.mjs && node tools/audit-safety.mjs"
+    "test": "node tools/selftest.mjs && node tools/test-upload-plan.mjs && node tools/test-force.mjs && node tools/test-multidevice.mjs && node tools/test-crossplatform.mjs && node tools/test-guards.mjs && node tools/test-filesync.mjs && node tools/test-boundaries.mjs && node tools/audit-safety.mjs && node tools/test-render.mjs"
   },
   "dsh": {
     "bundle": {

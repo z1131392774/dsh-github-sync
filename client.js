@@ -189,7 +189,8 @@ window.__ModuleLoader__.load({
         '@media (max-width: 820px) {',
         '  [' + PANEL_ATTR + '] button { min-height: 34px; min-width: 34px; padding: 7px 12px; font-size: 13px; }',
         '  [' + PANEL_ATTR + '] select { min-height: 34px; font-size: 15px; }',
-        '  [' + PANEL_ATTR + '] input:not([type]) { min-height: 34px; font-size: 16px; }',
+        '  [' + PANEL_ATTR + '] input:not([type]), [' + PANEL_ATTR + '] input[type="text"], [' + PANEL_ATTR + '] input[type="password"] { min-height: 38px; font-size: 16px; }',
+        '  [' + PANEL_ATTR + '] input[type="checkbox"] { width: 18px; height: 18px; margin-top: 3px; flex: none; }',
         '  [' + PANEL_ATTR + '] label { min-height: 40px; }',
         '}',
       ].join('\n');
@@ -1350,8 +1351,19 @@ window.__ModuleLoader__.load({
 
         // 设置抽屉
         settingsOpen ? h('div', {
-          style: { position: narrow ? 'fixed' : 'absolute', top: 8, right: 8, width: narrow ? 'calc(100% - 16px)' : 340, background: 'Canvas', border: `1px solid ${C.border}`,
-            borderRadius: 10, padding: 14, boxShadow: '0 10px 30px rgba(0,0,0,0.25)', zIndex: 20 },
+          style: narrow
+            ? {
+              position: 'fixed', left: 8, right: 8, bottom: 8, top: 'auto', width: 'auto',
+              maxHeight: 'calc(100vh - 16px)', overflowY: 'auto',
+              background: 'Canvas', border: `1px solid ${C.border}`, borderRadius: 12,
+              padding: '14px 14px calc(14px + env(safe-area-inset-bottom))',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.35)', zIndex: 30,
+            }
+            : {
+              position: 'absolute', top: 8, right: 8, width: 340,
+              background: 'Canvas', border: `1px solid ${C.border}`,
+              borderRadius: 10, padding: 14, boxShadow: '0 10px 30px rgba(0,0,0,0.25)', zIndex: 20,
+            },
         },
           h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: 10 } },
             h('div', { style: { fontWeight: 600, fontSize: 13 } }, tt('settings')),
@@ -1364,22 +1376,24 @@ window.__ModuleLoader__.load({
             ['deviceName', tt('device'), 'DESKTOP-XXX'],
             ['token', tt('token'), 'github_pat_…'],
           ].map(([key, label, ph]) => h('div', { key, style: { marginBottom: 10 } },
-            h('div', { style: { fontSize: 11, color: C.dim, marginBottom: 4 } }, label),
+            h('div', { style: { fontSize: narrow ? 12.5 : 11, color: C.dim, marginBottom: 4 } }, label),
             h('input', {
               type: key === 'token' ? 'password' : 'text',
               value: form[key] ?? '', placeholder: ph,
               onChange: (e) => setForm((f) => ({ ...f, [key]: e.target.value })),
-              style: { width: '100%', boxSizing: 'border-box', padding: '6px 8px', fontSize: 12,
-                borderRadius: 6, border: `1px solid ${C.border}`, background: 'transparent', color: 'inherit' },
+              style: { width: '100%', boxSizing: 'border-box', padding: narrow ? '9px 10px' : '6px 8px', fontSize: narrow ? 15 : 12,
+                borderRadius: narrow ? 8 : 6, border: `1px solid ${C.border}`, background: 'transparent', color: 'inherit' },
             }),
           )),
-          h('label', { style: { fontSize: 12, display: 'flex', gap: 6, alignItems: 'center', marginBottom: 10, cursor: 'pointer' } },
+          h('label', { style: { fontSize: narrow ? 13 : 12, display: 'flex', gap: narrow ? 9 : 6,
+            alignItems: narrow ? 'flex-start' : 'center', minHeight: narrow ? 40 : 0, marginBottom: 10, cursor: 'pointer' } },
             h('input', {
               type: 'checkbox', checked: Boolean(form.enableFiles),
               onChange: (e) => setForm((f) => ({ ...f, enableFiles: e.target.checked })),
             }),
             '启用文件夹 / 文件同步（默认关闭）'),
-          h('label', { style: { fontSize: 12, display: 'flex', gap: 6, alignItems: 'center', marginBottom: 10, cursor: 'pointer' } },
+          h('label', { style: { fontSize: narrow ? 13 : 12, display: 'flex', gap: narrow ? 9 : 6,
+            alignItems: narrow ? 'flex-start' : 'center', minHeight: narrow ? 40 : 0, marginBottom: 10, cursor: 'pointer' } },
             h('input', {
               type: 'checkbox', checked: Boolean(form.skipPreview),
               onChange: (e) => setForm((f) => ({ ...f, skipPreview: e.target.checked })),
@@ -1387,7 +1401,9 @@ window.__ModuleLoader__.load({
             '上传时跳过预览（高级：勾选后点上传直接提交，不再弹清单）'),
           h('div', { style: { fontSize: 11, color: C.dim, marginBottom: 10 } },
             tt('tokenHint') + ' · 当前：' + (status?.hasToken ? '已配置 ✅' : '未配置')),
-          h('div', { style: { display: 'flex', gap: 8, justifyContent: 'flex-end' } },
+          h('div', { style: narrow
+            ? { display: 'flex', flexDirection: 'column-reverse', gap: 8, alignItems: 'stretch', marginTop: 4 }
+            : { display: 'flex', gap: 8, justifyContent: 'flex-end' } },
             h(Button, { onClick: save }, tt('save')),
             h(Button, { onClick: test, primary: true }, tt('test')),
           ),

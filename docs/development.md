@@ -33,7 +33,7 @@ Run the cheapest check that would catch the mistake, then widen only across a bo
 1. **Focus.** `node tools/selftest.mjs` walks the pure logic — frame parsing, header rewrite, body comparison, path encoding, guard functions.
 2. **The plan-level tests** when you changed how actions are decided: `node tools/test-upload-plan.mjs`, `node tools/test-force.mjs`, `node tools/test-guards.mjs`, `node tools/test-filesync.mjs`.
 3. **The safety audit** when you added a route, an import, or a network call: `node tools/audit-safety.mjs`.
-4. **Manual run in DSH** when the change affects what a user sees: reload the plugin, open the panel, exercise the path.
+4. **The panel render test** when you touched layout or copy: `node tools/test-render.mjs` renders the panel with a stub React and asserts the wide and narrow contracts (one scroll surface on a phone, sticky action bar, where the settings sheet lands). It cannot see pixels — after it passes, still reload DSH once.
 5. **Documentation:** `npm run check`.
 
 Report the command and what it printed. "Should pass" is not a result. If something cannot run here, name it and say why.
