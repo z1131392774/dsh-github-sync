@@ -54,7 +54,7 @@ Long transfers show file-level progress — `12/30 · uploading · f12.bin` — 
 
 ## Deleting
 
-The two sides are independent, and each delete asks twice within four seconds.
+The two sides are independent. Trash opens a confirmation sheet that names the session and says what survives — nothing disappears on a single tap, and the sheet is where the four-second reflex used to live.
 
 - **Trash on a local row** deletes this machine's session only; the repository keeps it. Attachments nothing else references are collected locally.
 - **Trash on a remote row** deletes it from the repository only; this machine keeps it. Attachments nothing else references are collected remotely.

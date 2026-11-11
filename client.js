@@ -70,6 +70,9 @@ window.__ModuleLoader__.load({
       border: 'var(--dsw-alias-border-l2, rgba(127,127,127,0.25))',
       hover: 'var(--dsw-alias-interactive-bg-hover, rgba(127,127,127,0.12))',
       surface: 'var(--dsw-specific-menu, Canvas)',
+      opaque: 'var(--dsw-alias-bg-base, Canvas)',
+      onAccent: 'var(--dsw-alias-label-primary-inverted, #fff)',
+      menuBlur: 'var(--dsw-menu-backdrop-filter, blur(16px))',
       backdrop: 'var(--dsw-alias-bg-base, Canvas)',
       mask: 'var(--dsw-alias-bg-mask-drop, rgba(0,0,0,0.35))',
       shadow: 'var(--dsw-elevation-panel, 0 12px 30px rgba(0,0,0,0.25))',
@@ -131,13 +134,16 @@ window.__ModuleLoader__.load({
       );
     }
 
-    function Button({ children, onClick, disabled, primary, title }) {
+    function Button({ children, onClick, disabled, primary, danger, title }) {
       return h('button', {
         onClick, disabled, title,
         style: {
           padding: '5px 10px', borderRadius: 6, cursor: disabled ? 'not-allowed' : 'pointer',
-          border: `1px solid ${C.border}`, background: primary ? K.accentSoft : 'transparent',
-          color: 'inherit', font: 'inherit', fontSize: 12, opacity: disabled ? 0.5 : 1,
+          border: `1px solid ${danger ? K.error : C.border}`,
+          background: danger ? K.error : primary ? K.accentSoft : 'transparent',
+          color: danger ? K.onAccent : 'inherit',
+          fontWeight: danger ? 600 : undefined,
+          font: 'inherit', fontSize: 12, opacity: disabled ? 0.5 : 1,
         },
       }, children);
     }
@@ -566,15 +572,7 @@ window.__ModuleLoader__.load({
         }
       };
       const requestDelete = (scope, id) => {
-        if (confirmDel && confirmDel.scope === scope && confirmDel.id === id) {
-          setConfirmDel(null);
-          doDelete(scope, id);
-          return;
-        }
         setConfirmDel({ scope, id });
-        window.setTimeout(() => {
-          setConfirmDel((c) => (c && c.scope === scope && c.id === id ? null : c));
-        }, 4000);
       };
 
       // ---------- 冲突"选一边" ----------
@@ -762,7 +760,7 @@ window.__ModuleLoader__.load({
         popover === 'devices' ? h('div', {
           style: {
             position: narrow ? 'fixed' : 'absolute', top: 56, right: 16, width: narrow ? 'calc(100% - 24px)' : 360, maxHeight: '70%', overflow: 'auto',
-            background: K.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 12,
+            background: K.surface, backdropFilter: K.menuBlur, border: `1px solid ${C.border}`, borderRadius: 10, padding: 12,
             boxShadow: K.shadow, zIndex: 25, fontSize: 12,
           },
         },
@@ -787,7 +785,7 @@ window.__ModuleLoader__.load({
         popover === 'diag' ? h('div', {
           style: {
             position: narrow ? 'fixed' : 'absolute', top: 56, right: 16, width: narrow ? 'calc(100% - 24px)' : 560, maxHeight: '70%', overflow: 'auto',
-            background: K.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 12,
+            background: K.surface, backdropFilter: K.menuBlur, border: `1px solid ${C.border}`, borderRadius: 10, padding: 12,
             boxShadow: K.shadow, zIndex: 25, fontSize: 12,
           },
         },
@@ -816,7 +814,7 @@ window.__ModuleLoader__.load({
         popover === 'history' ? h('div', {
           style: {
             position: narrow ? 'fixed' : 'absolute', top: 56, right: 16, width: narrow ? 'calc(100% - 24px)' : 420, maxHeight: '70%', overflow: 'auto',
-            background: K.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 12,
+            background: K.surface, backdropFilter: K.menuBlur, border: `1px solid ${C.border}`, borderRadius: 10, padding: 12,
             boxShadow: K.shadow, zIndex: 25, fontSize: 12,
           },
         },
@@ -975,7 +973,6 @@ window.__ModuleLoader__.load({
                 : localCount === 0 ? h('div', { style: { padding: 12, fontSize: 12, color: C.dim } }, tt('emptyLocal'))
                   : visibleSessions.map((s) => {
                     const b = SYNC_BADGE[s.sync] || SYNC_BADGE['not-uploaded'];
-                    const asking = confirmDel && confirmDel.scope === 'local' && confirmDel.id === s.id;
                     return h('label', {
                       key: s.id,
                       title: `${s.title || s.id}\n${fmtBytes(s.bytes)} · ${fmtAgo(s.mtimeMs)}`,
@@ -1000,9 +997,9 @@ window.__ModuleLoader__.load({
                         style: {
                           flexShrink: 0, fontSize: 11, padding: narrow ? '4px 8px' : '1px 5px', borderRadius: 5, cursor: 'pointer',
                           border: `1px solid ${C.border}`, background: 'transparent',
-                          color: asking ? K.error : C.dim,
+                          color: C.dim,
                         },
-                      }, asking ? '确认删?' : '🗑'),
+                      }, '🗑'),
                     );
                   }),
             ),
@@ -1072,7 +1069,6 @@ window.__ModuleLoader__.load({
                   ? h('div', { style: { padding: 12, fontSize: 12, color: C.dim } }, tt('emptyRemote'))
                   : h('div', null, [
                     ...visibleRemote.map((s) => {
-                      const asking = confirmDel && confirmDel.scope === 'remote' && confirmDel.id === s.id;
                       return h('label', {
                         key: 's:' + s.id,
                         title: `${s.title || s.id}\n${s.project || '-'} · ${fmtBytes(s.bytes)}`,
@@ -1095,9 +1091,9 @@ window.__ModuleLoader__.load({
                           style: {
                             flexShrink: 0, fontSize: 11, padding: narrow ? '4px 8px' : '1px 5px', borderRadius: 5, cursor: 'pointer',
                             border: `1px solid ${K.border}`, background: 'transparent',
-                            color: asking ? K.error : C.dim,
+                            color: C.dim,
                           },
-                        }, asking ? '确认删?' : '🗑'),
+                        }, '🗑'),
                       );
                     }),
                     ...(status?.enableFiles ? (remote.files || []) : []).map((f) => h('label', {
@@ -1163,7 +1159,7 @@ window.__ModuleLoader__.load({
             alignItems: 'center', justifyContent: 'center', zIndex: 31 },
         },
           h('div', {
-            style: { width: narrow ? 'calc(100% - 20px)' : 640, maxHeight: '84%', display: 'flex', flexDirection: 'column', background: K.surface,
+            style: { width: narrow ? 'calc(100% - 20px)' : 640, maxHeight: '84%', display: 'flex', flexDirection: 'column', background: K.opaque, backdropFilter: K.menuBlur,
               border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 },
           },
             h('div', { style: { fontWeight: 600, fontSize: 13, marginBottom: 6 } }, '选择要上传的文件夹'),
@@ -1222,13 +1218,58 @@ window.__ModuleLoader__.load({
         ) : null,
 
         // 预览遮罩
+        // 删除确认：把「删哪个、删完怎样」写在弹窗里，不再在行内做两段式
+        confirmDel ? (() => {
+          const scope = confirmDel.scope;
+          const id = confirmDel.id;
+          const row = scope === 'local'
+            ? (sessions || []).find((x) => x.id === id)
+            : ((remote && remote.sessions) || []).find((x) => x.id === id);
+          const title = (row && row.title) || id;
+          const close = () => setConfirmDel(null);
+          return h('div', {
+            style: {
+              position: 'fixed', inset: 0, background: K.mask, zIndex: 40,
+              display: 'flex', alignItems: narrow ? 'flex-end' : 'center', justifyContent: 'center',
+              padding: narrow ? 0 : 20,
+            },
+          },
+            h('div', {
+              style: {
+                width: narrow ? '100%' : 420, background: K.opaque, border: `1px solid ${C.border}`,
+                borderRadius: narrow ? '12px 12px 0 0' : 12, padding: 16,
+                paddingBottom: narrow ? 'calc(16px + env(safe-area-inset-bottom))' : 16,
+                boxShadow: K.shadow,
+              },
+            },
+              h('div', { style: { fontSize: 14, fontWeight: 600, marginBottom: 8 } },
+                scope === 'local' ? '从本机删除这个会话？' : '从仓库删除这个会话？'),
+              h('div', { style: { fontSize: 12, color: C.dim, marginBottom: 8, wordBreak: 'break-all' } }, title),
+              h('div', { style: { fontSize: 12, lineHeight: 1.7, marginBottom: 14 } },
+                scope === 'local'
+                  ? `会删掉这台机器上 ${fmtBytes(row && row.bytes)} 的会话文件，之后在本地列表里就看不到它了。GitHub 仓库里那份不动，需要时可以重新下载。`
+                  : `会从仓库删掉这一条，另一台机器下次同步后也看不到它。本机已有的会话文件不动。`),
+              h('div', { style: {
+                display: 'flex', gap: 8, justifyContent: narrow ? 'stretch' : 'flex-end',
+                flexDirection: narrow ? 'column-reverse' : 'row',
+              } },
+                h(Button, { onClick: close }, '取消'),
+                h(Button, {
+                  danger: true,
+                  onClick: async () => { close(); await doDelete(scope, id); },
+                }, '删除'),
+              ),
+            ),
+          );
+        })() : null,
+
         preview ? h('div', {
           style: { position: narrow ? 'fixed' : 'absolute', inset: 0, background: K.mask, display: 'flex',
             alignItems: 'center', justifyContent: 'center', zIndex: 30 },
         },
           h('div', {
             style: {
-              width: narrow ? 'calc(100% - 20px)' : 620, maxHeight: '86%', overflow: 'auto', background: K.surface,
+              width: narrow ? 'calc(100% - 20px)' : 620, maxHeight: '86%', overflow: 'auto', background: K.opaque,
               border: `1px solid ${C.border}`, borderRadius: 12, padding: 16, boxShadow: K.shadow,
             },
           },
@@ -1315,7 +1356,7 @@ window.__ModuleLoader__.load({
             alignItems: 'center', justifyContent: 'center', zIndex: 40 },
         },
           h('div', {
-            style: { width: narrow ? 'calc(100% - 20px)' : 620, maxHeight: '86%', overflow: 'auto', background: K.surface,
+            style: { width: narrow ? 'calc(100% - 20px)' : 620, maxHeight: '86%', overflow: 'auto', background: K.opaque,
               border: `1px solid ${C.border}`, borderRadius: 12, padding: 18 },
           },
             h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: 12 } },
@@ -1364,19 +1405,25 @@ window.__ModuleLoader__.load({
           ),
         ) : null,
 
-        // 设置抽屉
+        // 设置抽屉：底下的遮罩只负责「点空白处关掉」
         settingsOpen ? h('div', {
+          key: 'settings-mask',
+          onClick: () => setSettingsOpen(false),
+          style: { position: 'fixed', inset: 0, background: K.mask, zIndex: narrow ? 29 : 19 },
+        }) : null,
+        settingsOpen ? h('div', {
+          key: 'settings-drawer',
           style: narrow
             ? {
               position: 'fixed', left: 8, right: 8, bottom: 8, top: 'auto', width: 'auto',
               maxHeight: 'calc(100vh - 16px)', overflowY: 'auto',
-              background: K.surface, border: `1px solid ${C.border}`, borderRadius: 12,
+              background: K.opaque, backdropFilter: K.menuBlur, border: `1px solid ${C.border}`, borderRadius: 12,
               padding: '14px 14px calc(14px + env(safe-area-inset-bottom))',
               boxShadow: K.shadow, zIndex: 30,
             }
             : {
               position: 'absolute', top: 8, right: 8, width: 340,
-              background: K.surface, border: `1px solid ${C.border}`,
+              background: K.opaque, backdropFilter: K.menuBlur, border: `1px solid ${C.border}`,
               borderRadius: 10, padding: 14, boxShadow: K.shadow, zIndex: 20,
             },
         },

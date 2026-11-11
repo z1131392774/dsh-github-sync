@@ -1,6 +1,7 @@
 // 渲染测试：不需要浏览器，用假 React 跑一遍面板，检查宽窄两态的布局契约。
 // 覆盖：窄屏整页滚动（根容器滚动、列表不再内部滚动、动作条吸底）、
-//       设置抽屉在窄屏贴底可滚 / 宽屏右上角 340 宽、页签切换只影响对应一栏。
+//       设置抽屉在窄屏贴底可滚 / 宽屏右上角 340 宽、页签切换只影响对应一栏、
+//       删除走确认弹窗（弹窗底不透明）、颜色只走宿主 --dsw-* 令牌。
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -195,6 +196,24 @@ for (const narrow of [false, true]) {
       }
     }
   }
+
+  // 删除确认：点行内 🗑 应当弹窗，而不是把按钮改成「确认删?」
+  const trash = nodes.find((n) => n.type === 'button' && textOf(n).trim() === '🗑');
+  ok(tag + ' 找得到删除按钮', Boolean(trash));
+  if (trash) {
+    trash.props.onClick({ preventDefault() {}, stopPropagation() {} });
+    hookIndex = 0;
+    tree = Panel({ t: (k) => k });
+    const modalText = textOf(tree);
+    const btns = flatten(tree).filter((n) => n.type === 'button').map((n) => textOf(n).trim());
+    ok(tag + ' 删除弹窗打开', modalText.includes('从本机删除这个会话？'));
+    ok(tag + ' 弹窗写清了后果', modalText.includes('GitHub 仓库里那份不动'));
+    ok(tag + ' 弹窗有取消与删除', btns.includes('取消') && btns.includes('删除'), JSON.stringify(btns.slice(0, 10)));
+    ok(tag + ' 行内不再出现确认删', !modalText.includes('确认删?'));
+    const card = flatten(tree).find((n) => n.props?.style?.background === 'var(--dsw-alias-bg-base, Canvas)'
+      && n.props?.style?.zIndex === undefined && String(textOf(n)).includes('从本机删除'));
+    ok(tag + ' 删除弹窗用不透明底', Boolean(card));
+  }
 }
 
 if (fails.length) {
@@ -202,4 +221,4 @@ if (fails.length) {
   for (const f of fails) console.error('  x ' + f);
   process.exit(1);
 }
-console.log('通过 ' + pass + ' · 失败 0（面板渲染：宽窄两态 + 设置抽屉）');
+console.log('通过 ' + pass + ' · 失败 0（面板渲染：宽窄两态 + 设置抽屉 + 删除弹窗）');
