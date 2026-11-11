@@ -36,10 +36,11 @@ English is the source of truth. Every document exists twice, side by side, and t
 - **Reciprocal links.** The first lines of each file link to its twin, so a reader lands in the language they want and an editor can find the pair.
 - **One commit.** Change the English, then update the twin before committing. A drifted pair is worse than one language, because the reader trusts the wrong copy.
 - **Translation, not rewriting.** The translator paraphrases for idiom rather than mapping words. Chinese that reads like translated English — stacked 的, 被 where a verb suffices, 进行/作出 before a noun, 之一, and and-strings of 和 — is a defect, not a style choice.
+- **Freshness.** If the English changes after the twin was last written, `npm run check` reports the pair as stale. Retranslate the affected paragraph, or list the file under `pendingTranslations` in [`doc-budgets.json`](../scripts/doc-budgets.json) while the rewrite is in progress.
 - **Same content.** Examples, tables, error strings, and code stay identical; only the prose changes. A Chinese file that carries a fact the English lacks is a bug in both.
 - **Exclusions.** `CHANGELOG.md` and `RELEASE_NOTES.md` have no twin: they are append-only history, and a translated changelog drifts from the commits it describes. The list lives in [`doc-budgets.json`](../scripts/doc-budgets.json).
 
-`npm run check` fails when a pair is missing, when the two files do not link to each other, or when either file passes its budget. A record whose Chinese half was forgotten therefore fails the build rather than quietly going stale.
+`npm run check` fails when a pair is missing, when the two files do not link to each other, when either file passes its budget, or when the twin is older than its source. A record whose Chinese half was forgotten fails the build rather than quietly going stale.
 
 ## How instructions load
 
@@ -64,7 +65,7 @@ A rule earns its place only if it changes a decision an agent would otherwise ge
 - **Review after any incident** where an agent did the wrong thing: add the missing rule or delete the one that misled it.
 - **Grow downward.** When a file nears its budget, move a paragraph into the document that owns it and leave one line.
 - **Prefer deletion.** A stale rule teaches the wrong lesson actively.
-- **Check the pair and the links mechanically.** `npm run check` resolves local links, heading anchors, budgets, and pairing.
+- **Check the pair, the links, and the age mechanically.** `npm run check` resolves local links, heading anchors, budgets, pairing, and which half of a pair moved last.
 - **A rule with no executor is advice.** Say so in the rule, or accept that review is the only enforcement.
 - **Treat a violation as a documentation bug first.** If an agent ignores a rule repeatedly, the rule is vague, buried, or contradicted elsewhere.
 

@@ -15,6 +15,13 @@
  * ceiling, because a faithful Chinese rendering of 1,200 English words is
  * longer than 1,200.
  *
+ * A pair can exist, link both ways, keep its budget, and still be stale: the
+ * English half changed and the translation did not. The gate compares the last
+ * commit that touched each half and fails when the Chinese one is older, unless
+ * the file is listed in `pendingTranslations`. Repositories without git history
+ * (a packed tarball, a shallow CI checkout) skip that comparison instead of
+ * guessing.
+ *
  * An empty corpus is a failure: a gate that checks nothing passes everything.
  * Symlinks are skipped so a `CLAUDE.md` alias is never counted twice.
  *
@@ -23,6 +30,7 @@
 
 import { readFile, readdir } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
 import { dirname, join, relative, resolve } from 'node:path'
 
 const ROOT = resolve(import.meta.dirname, '..')
@@ -37,6 +45,7 @@ const manifest = JSON.parse(await readFile(join(ROOT, 'scripts/doc-budgets.json'
 const budgets = manifest.budgets ?? {}
 const excludedPairs = new Set(manifest.excludePairs ?? [])
 const zhMultiplier = manifest.zhMultiplier ?? 2
+const pendingTranslations = new Set(manifest.pendingTranslations ?? [])
 
 async function collect(directory) {
   const files = []
@@ -77,6 +86,33 @@ function countUnits(text) {
 
 const isChinese = file => file.endsWith(ZH_SUFFIX)
 const englishTwin = file => file.slice(0, -ZH_SUFFIX.length) + '.md'
+
+function day(seconds) {
+  return new Date(seconds * 1000).toISOString().slice(0, 10)
+}
+
+// Last commit that touched each file, in seconds. Missing history is not an
+// error: a tarball or a shallow checkout cannot answer the question, and a gate
+// that fails on absent evidence gets switched off instead of trusted.
+function lastCommitTimes(files) {
+  const times = new Map()
+  try {
+    execFileSync('git', ['rev-parse', '--git-dir'], { cwd: ROOT, stdio: 'ignore' })
+  } catch {
+    return times
+  }
+  for (const file of files) {
+    try {
+      const out = execFileSync('git', ['log', '-1', '--format=%ct', '--', file], {
+        cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'],
+      }).trim()
+      if (out) times.set(file, Number(out))
+    } catch {
+      // uncommitted or untracked: nothing to compare
+    }
+  }
+  return times
+}
 
 function budgetFor(file) {
   const english = isChinese(file) ? englishTwin(file) : file
@@ -120,6 +156,22 @@ for (const file of files) {
   const linkPattern = new RegExp(`\\]\\([^)\\s]*${twinName.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&')}[)#]?[^)\\s]*\\)`, 'u')
   if (!linkPattern.test(withoutFences(contents.get(file)))) {
     errors.push(`${file}: does not link to its twin ${twinName}`)
+  }
+}
+
+const lastTouched = lastCommitTimes(files)
+for (const file of files) {
+  if (excludedPairs.has(file) || isChinese(file) || pendingTranslations.has(file)) continue
+  const twin = file.slice(0, -3) + ZH_SUFFIX
+  if (!contents.has(twin)) continue
+  const english = lastTouched.get(file)
+  const chinese = lastTouched.get(twin)
+  if (english == null || chinese == null) continue
+  if (chinese < english) {
+    errors.push(
+      `${file}: written ${day(english)}, translation ${twin} last touched ${day(chinese)}`
+      + ' — refresh the translation, or list the file under "pendingTranslations" in scripts/doc-budgets.json',
+    )
   }
 }
 

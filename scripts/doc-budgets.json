@@ -14,10 +14,10 @@
     "docs/troubleshooting.md": 1200,
     "docs/setup.md": 1200,
     "docs/releasing.md": 1200,
-    "SUBMIT.md": 600,
     ".agents/notes/README.md": 900,
     ".agents/skills/pre-push-checks/SKILL.md": 500,
     ".agents/skills/pre-push-checks/references/check-selection.md": 600,
     "scripts/AGENTS.md": 400
-  }
+  },
+  "pendingTranslations": []
 }
