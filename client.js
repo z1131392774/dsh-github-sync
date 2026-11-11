@@ -58,9 +58,8 @@ window.__ModuleLoader__.load({
     // 宿主（DSH Web）的设计令牌。硬编码色值在深色主题下会失配，
     // 所以这里只写令牌名，具体色值交给主题解析；括号里是拿不到令牌时的兜底。
     const K = {
-      accent: 'var(--dsw-alias-state-business-primary, #4d6bfe)',
-      accentSoft: 'color-mix(in srgb, var(--dsw-alias-state-business-primary, #4d6bfe) 12%, transparent)',
-      accentLine: 'color-mix(in srgb, var(--dsw-alias-state-business-primary, #4d6bfe) 55%, transparent)',
+      accent: 'var(--dsw-alias-state-business-primary, #4176e6)',
+      accentLine: 'color-mix(in srgb, var(--dsw-alias-state-business-primary, #4176e6) 55%, transparent)',
       success: 'var(--dsw-alias-state-success-primary, #22c55e)',
       warn: 'var(--dsw-alias-state-warn-primary, #f59e0b)',
       error: 'var(--dsw-alias-state-error-primary, #ef4444)',
@@ -139,9 +138,9 @@ window.__ModuleLoader__.load({
         onClick, disabled, title,
         style: {
           padding: '5px 10px', borderRadius: 6, cursor: disabled ? 'not-allowed' : 'pointer',
-          border: `1px solid ${danger ? K.error : C.border}`,
-          background: danger ? K.error : primary ? K.accentSoft : 'transparent',
-          color: danger ? K.onAccent : 'inherit',
+          border: `1px solid ${danger ? K.error : primary ? K.accent : C.border}`,
+          background: danger ? K.error : primary ? K.accent : 'transparent',
+          color: danger || primary ? K.onAccent : 'inherit',
           fontWeight: danger ? 600 : undefined,
           font: 'inherit', fontSize: 12, opacity: disabled ? 0.5 : 1,
         },
@@ -697,8 +696,8 @@ window.__ModuleLoader__.load({
       const targetCwd = (knownTarget ? target : '') || (status && status.defaultCwd) || '';
       const segStyle = (on) => ({
         flex: 1, fontSize: 12, padding: '8px 12px', borderRadius: 7, cursor: 'pointer',
-        border: `1px solid ${on ? K.accentLine : C.border}`,
-        background: on ? K.accentSoft : 'transparent',
+        border: `1px solid ${on ? K.accent : C.border}`,
+        background: 'transparent',
         color: 'inherit', fontWeight: on ? 600 : 400,
       });
 
@@ -1280,7 +1279,7 @@ window.__ModuleLoader__.load({
             preview.kind === 'download' ? h('div', {
               style: {
                 fontSize: 12, marginBottom: 8, padding: '7px 10px', borderRadius: 7,
-                border: `1px solid ${K.accentLine}`, background: K.accentSoft, wordBreak: 'break-all',
+                border: `1px solid ${C.border}`, borderLeft: `3px solid ${K.accent}`, background: 'transparent', wordBreak: 'break-all',
               },
             }, [
               h('span', { key: 'k', style: { color: C.dim } }, '将写入本机工作区：'),
