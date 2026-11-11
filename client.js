@@ -692,6 +692,8 @@ window.__ModuleLoader__.load({
         [PANEL_ATTR]: '1',
         style: {
           display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0,
+          overflowY: narrow ? 'auto' : 'hidden',
+          WebkitOverflowScrolling: 'touch',
           padding: narrow ? '10px 10px 12px' : '14px 16px', gap: narrow ? 8 : 12, position: 'relative',
         },
       },
@@ -743,7 +745,7 @@ window.__ModuleLoader__.load({
         // 设备 / 历史弹层
         popover === 'devices' ? h('div', {
           style: {
-            position: 'absolute', top: 56, right: 16, width: narrow ? 'calc(100% - 24px)' : 360, maxHeight: '70%', overflow: 'auto',
+            position: narrow ? 'fixed' : 'absolute', top: 56, right: 16, width: narrow ? 'calc(100% - 24px)' : 360, maxHeight: '70%', overflow: 'auto',
             background: 'Canvas', border: `1px solid ${C.border}`, borderRadius: 10, padding: 12,
             boxShadow: '0 12px 30px rgba(0,0,0,0.25)', zIndex: 25, fontSize: 12,
           },
@@ -768,7 +770,7 @@ window.__ModuleLoader__.load({
 
         popover === 'diag' ? h('div', {
           style: {
-            position: 'absolute', top: 56, right: 16, width: narrow ? 'calc(100% - 24px)' : 560, maxHeight: '70%', overflow: 'auto',
+            position: narrow ? 'fixed' : 'absolute', top: 56, right: 16, width: narrow ? 'calc(100% - 24px)' : 560, maxHeight: '70%', overflow: 'auto',
             background: 'Canvas', border: `1px solid ${C.border}`, borderRadius: 10, padding: 12,
             boxShadow: '0 12px 30px rgba(0,0,0,0.25)', zIndex: 25, fontSize: 12,
           },
@@ -797,7 +799,7 @@ window.__ModuleLoader__.load({
 
         popover === 'history' ? h('div', {
           style: {
-            position: 'absolute', top: 56, right: 16, width: narrow ? 'calc(100% - 24px)' : 420, maxHeight: '70%', overflow: 'auto',
+            position: narrow ? 'fixed' : 'absolute', top: 56, right: 16, width: narrow ? 'calc(100% - 24px)' : 420, maxHeight: '70%', overflow: 'auto',
             background: 'Canvas', border: `1px solid ${C.border}`, borderRadius: 10, padding: 12,
             boxShadow: '0 12px 30px rgba(0,0,0,0.25)', zIndex: 25, fontSize: 12,
           },
@@ -886,7 +888,7 @@ window.__ModuleLoader__.load({
         note ? h('div', { style: { fontSize: 12, color: C.dim } }, note) : null,
 
         // 本机 / 仓库 两区：宽屏并排，窄屏单区切换
-        narrow ? h('div', { style: { display: 'flex', gap: 6 } },
+        narrow ? h('div', { style: { display: 'flex', gap: 6, position: 'sticky', top: 0, zIndex: 3, background: 'Canvas', padding: '2px 0' } },
           h('button', { onClick: () => setTab('local'), style: segStyle(tab === 'local') },
             `本机 · ${localCount}`),
           h('button', { onClick: () => setTab('remote'), style: segStyle(tab === 'remote') },
@@ -895,7 +897,7 @@ window.__ModuleLoader__.load({
 
         h('div', {
           style: {
-            display: 'flex', gap: 12, flex: 1, minHeight: 0,
+            display: 'flex', gap: 12, flex: narrow ? 'none' : 1, minHeight: 0,
             flexDirection: narrow ? 'column' : 'row',
           },
         },
@@ -903,7 +905,7 @@ window.__ModuleLoader__.load({
           // ---------- 本机 ----------
           (!narrow || tab === 'local') ? h('section', {
             style: {
-              flex: 1, minWidth: 0, minHeight: 0, border: `1px solid ${C.border}`, borderRadius: 10,
+              flex: narrow ? 'none' : 1, minWidth: 0, minHeight: 0, border: `1px solid ${C.border}`, borderRadius: 10,
               display: 'flex', flexDirection: 'column', overflow: 'hidden',
             },
           },
@@ -952,7 +954,7 @@ window.__ModuleLoader__.load({
               h(MiniBtn, { onClick: selectUnsynced }, '选未同步'),
               h(MiniBtn, { onClick: clearSelection }, '清空'),
             ),
-            h('div', { style: { flex: 1, minHeight: 0, overflow: 'auto' } },
+            h('div', { style: { flex: narrow ? '0 0 auto' : 1, minHeight: 0, overflow: narrow ? 'visible' : 'auto' } },
               loading ? h('div', { style: { padding: 12, fontSize: 12, color: C.dim } }, tt('loading'))
                 : localCount === 0 ? h('div', { style: { padding: 12, fontSize: 12, color: C.dim } }, tt('emptyLocal'))
                   : visibleSessions.map((s) => {
@@ -992,6 +994,7 @@ window.__ModuleLoader__.load({
               style: {
                 borderTop: `1px solid ${C.border}`, padding: '8px 12px',
                 display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
+                ...(narrow ? { position: 'sticky', bottom: 0, zIndex: 3, background: 'Canvas' } : {}),
               },
             },
               h('span', { style: { fontSize: 11, color: C.dim, whiteSpace: 'nowrap' } },
@@ -1019,7 +1022,7 @@ window.__ModuleLoader__.load({
           // ---------- 仓库 ----------
           (!narrow || tab === 'remote') ? h('section', {
             style: {
-              flex: 1, minWidth: 0, minHeight: 0, border: `1px solid ${C.border}`, borderRadius: 10,
+              flex: narrow ? 'none' : 1, minWidth: 0, minHeight: 0, border: `1px solid ${C.border}`, borderRadius: 10,
               display: 'flex', flexDirection: 'column', overflow: 'hidden',
             },
           },
@@ -1047,7 +1050,7 @@ window.__ModuleLoader__.load({
                 },
               }, workspaces.map((w) => h('option', { key: w.id, value: w.path }, `${w.title} · ${w.sessionCount}`))),
             ),
-            h('div', { style: { flex: 1, minHeight: 0, overflow: 'auto' } },
+            h('div', { style: { flex: narrow ? '0 0 auto' : 1, minHeight: 0, overflow: narrow ? 'visible' : 'auto' } },
               !connected ? h('div', { style: { padding: 12, fontSize: 12, color: C.dim } }, tt('noRepo'))
                 : (visibleRemote.length + (status?.enableFiles ? (remote.files || []).length : 0)) === 0
                   ? h('div', { style: { padding: 12, fontSize: 12, color: C.dim } }, tt('emptyRemote'))
@@ -1104,6 +1107,7 @@ window.__ModuleLoader__.load({
               style: {
                 borderTop: `1px solid ${C.border}`, padding: '8px 12px',
                 display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
+                ...(narrow ? { position: 'sticky', bottom: 0, zIndex: 3, background: 'Canvas' } : {}),
               },
             },
               h('span', { style: { fontSize: 11, color: C.dim, whiteSpace: 'nowrap' } },
@@ -1139,7 +1143,7 @@ window.__ModuleLoader__.load({
         ),
         // 文件夹浏览器
         browser ? h('div', {
-          style: { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex',
+          style: { position: narrow ? 'fixed' : 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex',
             alignItems: 'center', justifyContent: 'center', zIndex: 31 },
         },
           h('div', {
@@ -1203,7 +1207,7 @@ window.__ModuleLoader__.load({
 
         // 预览遮罩
         preview ? h('div', {
-          style: { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex',
+          style: { position: narrow ? 'fixed' : 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex',
             alignItems: 'center', justifyContent: 'center', zIndex: 30 },
         },
           h('div', {
@@ -1291,7 +1295,7 @@ window.__ModuleLoader__.load({
 
         // 首次配置向导
         popover === 'wizard' ? h('div', {
-          style: { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex',
+          style: { position: narrow ? 'fixed' : 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex',
             alignItems: 'center', justifyContent: 'center', zIndex: 40 },
         },
           h('div', {
@@ -1346,7 +1350,7 @@ window.__ModuleLoader__.load({
 
         // 设置抽屉
         settingsOpen ? h('div', {
-          style: { position: 'absolute', top: 8, right: 8, width: narrow ? 'calc(100% - 16px)' : 340, background: 'Canvas', border: `1px solid ${C.border}`,
+          style: { position: narrow ? 'fixed' : 'absolute', top: 8, right: 8, width: narrow ? 'calc(100% - 16px)' : 340, background: 'Canvas', border: `1px solid ${C.border}`,
             borderRadius: 10, padding: 14, boxShadow: '0 10px 30px rgba(0,0,0,0.25)', zIndex: 20 },
         },
           h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: 10 } },
