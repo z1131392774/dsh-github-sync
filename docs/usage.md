@@ -2,25 +2,27 @@
 
 *[中文](usage_zh.md)*
 
-The panel is the whole interface: two columns, a row of actions, and a status line at the top. Everything that writes to GitHub goes through a preview you confirm, so you never discover after the fact what left your machine.
+The panel is the whole interface. Each side has exactly one action — the left pane downloads, the right pane uploads — so a click never needs a second thought about which direction it goes. Everything that writes to GitHub goes through a preview you confirm.
 
 ## The panel
 
 ![The panel](panel.png)
 
 ```
-┌ device / repository / branch / current workspace ────── ● connected ┐
-├──────────────────────┬───────────────────────────────────────────────┤
-│ remote repository    │ local sessions (workspace dropdown)           │
-│ 💬 sessions (tickable)│ ☑ session…   size   time                     │
-│ 📄 files (tickable)   │                                               │
-├──────────────────────┴───────────────────────────────────────────────┤
-│ selected: local N · remote sessions M · remote files K                │
-│ [Preview upload] [Folder…] [Download sessions] [Download files]       │
-└──────────────────────────────────────────────────────────────────────┘
+┌ device / repository / branch ────────────────── ● connected   [refresh] [gear] ┐
+├────────────────────────────────┬─────────────────────────────────────────────┤
+│ REMOTE (repository)            │ LOCAL (this machine)                        │
+│ download to: [workspace  ▾]    │ browse: [workspace  ▾]                      │
+│ 💬 sessions (tickable)         │ ☑ session…   synced  size  time             │
+│ 📄 files (tickable)            │                                             │
+│ [Folder…] [Download files]     │ [Sync this workspace (3)]                   │
+│ [Download to this machine (2)] │ [Upload to repository (2)]                  │
+└────────────────────────────────┴─────────────────────────────────────────────┘
 ```
 
-The **workspace dropdown** decides which local sessions the right column shows. Its default comes from the workspace you are currently viewing in DSH, which is the wrong target surprisingly often — check it before downloading, because a downloaded session belongs to whichever workspace it lands in.
+Two dropdowns, two jobs. **browse** only decides which sessions the local list shows; it never decides where a download lands. **download to** is the destination for the sessions you tick on the left, it is remembered between visits, and the confirmation dialog repeats it before anything is written.
+
+Below 820 pixels wide the two panes collapse into one, with a switch at the top (`本机 · 12` / `仓库 · 40`). Every row keeps its full width, rows grow to finger height, and each pane's action stays pinned to the bottom of its pane.
 
 ## Sync badges
 

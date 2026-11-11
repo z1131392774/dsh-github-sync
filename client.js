@@ -178,6 +178,46 @@ window.__ModuleLoader__.load({
       return [value, setValue];
     }
 
+    // 窄屏增强：只写静态 CSS，不拼接任何运行时数据。目的是把按钮与输入框放大到手指能点的尺寸
+    const PANEL_ATTR = 'data-dsh-github-sync';
+    function ensurePanelCss() {
+      if (typeof document === 'undefined') return;
+      if (document.getElementById('dsh-github-sync-mobile')) return;
+      const el = document.createElement('style');
+      el.id = 'dsh-github-sync-mobile';
+      el.textContent = [
+        '@media (max-width: 820px) {',
+        '  [' + PANEL_ATTR + '] button { min-height: 34px; min-width: 34px; padding: 7px 12px; font-size: 13px; }',
+        '  [' + PANEL_ATTR + '] select { min-height: 34px; font-size: 15px; }',
+        '  [' + PANEL_ATTR + '] input:not([type]) { min-height: 34px; font-size: 16px; }',
+        '  [' + PANEL_ATTR + '] label { min-height: 40px; }',
+        '}',
+      ].join('\n');
+      (document.head || document.documentElement).appendChild(el);
+    }
+
+    // 窄屏时把两个区折叠成一个，用分段按钮切换；宽屏始终并排
+    function useNarrow(max = 820) {
+      const query = `(max-width: ${max}px)`;
+      const read = () => {
+        try { return window.matchMedia(query).matches; } catch { return false; }
+      };
+      const [narrow, setNarrow] = React.useState(read);
+      React.useEffect(() => {
+        let mq;
+        try { mq = window.matchMedia(query); } catch { return undefined; }
+        const onChange = () => setNarrow(mq.matches);
+        onChange();
+        if (mq.addEventListener) mq.addEventListener('change', onChange);
+        else if (mq.addListener) mq.addListener(onChange);
+        return () => {
+          if (mq.removeEventListener) mq.removeEventListener('change', onChange);
+          else if (mq.removeListener) mq.removeListener(onChange);
+        };
+      }, [query]);
+      return narrow;
+    }
+
     function Panel({ t }) {
       const tt = (k) => { try { const v = t && t(k); return v || ZH[k] || k; } catch { return ZH[k] || k; } };
       const [status, setStatus] = React.useState(null);
@@ -185,6 +225,11 @@ window.__ModuleLoader__.load({
       const [workspaces, setWorkspaces] = React.useState([]);
       const [loading, setLoading] = React.useState(true);
       const [cwd, setCwd] = usePersisted('cwd', '');
+      // 下载目标工作区：与「浏览工作区」彻底分开，避免一个下拉框承担两种含义
+      const [target, setTarget] = usePersisted('target', '');
+      const [tab, setTab] = usePersisted('tab', 'local');
+      const narrow = useNarrow(820);
+      React.useEffect(() => { ensurePanelCss(); }, []);
       const [err, setErr] = React.useState(null);
       const [settingsOpen, setSettingsOpen] = usePersisted('settingsOpen', false);
       const [selected, setSelected] = usePersisted('selected', {});
@@ -461,7 +506,8 @@ window.__ModuleLoader__.load({
       const previewDownload = async (explicitIds, forceIds) => {
         const ids = Array.isArray(explicitIds) ? explicitIds : pickedRemote();
         const force = Array.isArray(forceIds) ? forceIds : [];
-        if (!ids.length) { setNote('先在左边勾选远端会话'); return; }
+        if (!ids.length) { setNote('先在仓库一栏里勾选要下载的会话'); return; }
+        if (!targetCwd) { setNote('先在「下载到」里选一个本机工作区'); return; }
         setBusy(true); setNote(null);
         const tid = newTid();
         ownsTransfer.current = true;
@@ -469,7 +515,7 @@ window.__ModuleLoader__.load({
         setProgress({ total: ids.length, done: 0, phase: 'fetch', kind: 'preview' });
         startPolling(tid);
         try {
-          const r = await postJson(`${PREFIX}/download/preview`, { ids, targetCwd: cwd, transferId: tid, force });
+          const r = await postJson(`${PREFIX}/download/preview`, { ids, targetCwd, transferId: tid, force });
           if (!r.ok) { setNote(r.error || '预览失败'); return; }
           openPreview({ kind: 'download', data: r });
         } catch (e) {
@@ -553,7 +599,9 @@ window.__ModuleLoader__.load({
             const failed = (r.applied || []).filter((a) => a.action === 'attach-failed');
             const hint = failed.find((a) => a.hint)?.hint;
             setNote(r.ok
-              ? (failed.length ? `已落盘，但 ${failed.length} 条没能挂载 · ${hint || ''}` : `已落盘 ${(r.applied || []).length} 个会话`)
+              ? (failed.length
+                ? `已写入 ${targetCwd}，但 ${failed.length} 条没能挂载 · ${hint || ''}`
+                : `已写入 ${targetCwd}（${(r.applied || []).length} 个会话）。DSH 会缓存已打开的会话，回到工作区重新打开那个标签页才看得到新内容。`)
               : (r.error || '下载失败'));
             setSelectedRemote({});
           }
@@ -577,7 +625,7 @@ window.__ModuleLoader__.load({
         closePreview();
         setBusy(true);
         try {
-          const r = await postJson(`${PREFIX}/download/preview`, { ids: [id], targetCwd: cwd });
+          const r = await postJson(`${PREFIX}/download/preview`, { ids: [id], targetCwd });
           if (!r.ok) { setNote(r.error || '下载失败'); return; }
           await runConfirm({ kind: 'download', data: r });
         } catch (e) {
@@ -630,7 +678,23 @@ window.__ModuleLoader__.load({
       const localCount = visibleSessions.length;
       const unsyncedCount = sessions.filter((s) => (!showSubagents && isNoise(s) ? false : (s.sync !== 'synced'))).length;
 
-      return h('div', { style: { display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, padding: '14px 16px', gap: 12, position: 'relative' } },
+      // 下载目标：优先上次选中的工作区，否则用当前页面的工作区，再不行退回浏览中的工作区
+      const knownTarget = workspaces.some((w) => w.path === target);
+      const targetCwd = (knownTarget ? target : '') || (status && status.defaultCwd) || '';
+      const segStyle = (on) => ({
+        flex: 1, fontSize: 12, padding: '8px 12px', borderRadius: 7, cursor: 'pointer',
+        border: `1px solid ${on ? 'rgba(99,102,241,0.6)' : C.border}`,
+        background: on ? 'rgba(99,102,241,0.12)' : 'transparent',
+        color: 'inherit', fontWeight: on ? 600 : 400,
+      });
+
+      return h('div', {
+        [PANEL_ATTR]: '1',
+        style: {
+          display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0,
+          padding: narrow ? '10px 10px 12px' : '14px 16px', gap: narrow ? 8 : 12, position: 'relative',
+        },
+      },
 
         // 顶栏
         h('div', { style: { display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' } },
@@ -679,7 +743,7 @@ window.__ModuleLoader__.load({
         // 设备 / 历史弹层
         popover === 'devices' ? h('div', {
           style: {
-            position: 'absolute', top: 56, right: 16, width: 360, maxHeight: '60%', overflow: 'auto',
+            position: 'absolute', top: 56, right: 16, width: narrow ? 'calc(100% - 24px)' : 360, maxHeight: '70%', overflow: 'auto',
             background: 'Canvas', border: `1px solid ${C.border}`, borderRadius: 10, padding: 12,
             boxShadow: '0 12px 30px rgba(0,0,0,0.25)', zIndex: 25, fontSize: 12,
           },
@@ -704,7 +768,7 @@ window.__ModuleLoader__.load({
 
         popover === 'diag' ? h('div', {
           style: {
-            position: 'absolute', top: 56, right: 16, width: 560, maxHeight: '70%', overflow: 'auto',
+            position: 'absolute', top: 56, right: 16, width: narrow ? 'calc(100% - 24px)' : 560, maxHeight: '70%', overflow: 'auto',
             background: 'Canvas', border: `1px solid ${C.border}`, borderRadius: 10, padding: 12,
             boxShadow: '0 12px 30px rgba(0,0,0,0.25)', zIndex: 25, fontSize: 12,
           },
@@ -733,7 +797,7 @@ window.__ModuleLoader__.load({
 
         popover === 'history' ? h('div', {
           style: {
-            position: 'absolute', top: 56, right: 16, width: 420, maxHeight: '60%', overflow: 'auto',
+            position: 'absolute', top: 56, right: 16, width: narrow ? 'calc(100% - 24px)' : 420, maxHeight: '70%', overflow: 'auto',
             background: 'Canvas', border: `1px solid ${C.border}`, borderRadius: 10, padding: 12,
             boxShadow: '0 12px 30px rgba(0,0,0,0.25)', zIndex: 25, fontSize: 12,
           },
@@ -821,46 +885,209 @@ window.__ModuleLoader__.load({
         err ? h('div', { style: { fontSize: 12, color: '#ef4444' } }, err) : null,
         note ? h('div', { style: { fontSize: 12, color: C.dim } }, note) : null,
 
-        // 双栏
-        h('div', { style: { display: 'flex', gap: 12, flex: 1, minHeight: 0 } },
-          h('div', { style: { flex: 1, minWidth: 0, border: `1px solid ${C.border}`, borderRadius: 8, display: 'flex', flexDirection: 'column', minHeight: 0 } },
-            h('div', { style: { padding: '8px 12px', fontSize: 12, fontWeight: 600, borderBottom: `1px solid ${C.border}`, display: 'flex', gap: 8, alignItems: 'center' } },
-              h('span', null, tt('remote')),
-              h('span', { style: { color: C.dim, fontWeight: 400 } },
-                `${visibleRemote.length} 会话${hiddenRemote ? `（藏 ${hiddenRemote}）` : ''}${status?.enableFiles ? ` · ${(remote.files || []).length} 文件 · ${remote.attachments || 0} 附件` : ''}`),
-              remoteStale ? h('span', { style: { color: '#f59e0b', fontWeight: 400, fontSize: 11 } }, '· 上次结果（读取失败）') : null,
+        // 本机 / 仓库 两区：宽屏并排，窄屏单区切换
+        narrow ? h('div', { style: { display: 'flex', gap: 6 } },
+          h('button', { onClick: () => setTab('local'), style: segStyle(tab === 'local') },
+            `本机 · ${localCount}`),
+          h('button', { onClick: () => setTab('remote'), style: segStyle(tab === 'remote') },
+            `仓库 · ${visibleRemote.length}`),
+        ) : null,
+
+        h('div', {
+          style: {
+            display: 'flex', gap: 12, flex: 1, minHeight: 0,
+            flexDirection: narrow ? 'column' : 'row',
+          },
+        },
+
+          // ---------- 本机 ----------
+          (!narrow || tab === 'local') ? h('section', {
+            style: {
+              flex: 1, minWidth: 0, minHeight: 0, border: `1px solid ${C.border}`, borderRadius: 10,
+              display: 'flex', flexDirection: 'column', overflow: 'hidden',
+            },
+          },
+            h('div', {
+              style: {
+                padding: '8px 12px', borderBottom: `1px solid ${C.border}`,
+                display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
+              },
+            },
+              h('span', { style: { fontSize: 12, fontWeight: 600 } }, tt('local')),
+              h('span', { style: { fontSize: 11, color: C.dim } },
+                `${localCount} ${tt('sessions')}${hiddenSessions ? ` · 隐藏 ${hiddenSessions}` : ''}`),
+              h('span', { style: { flex: 1 } }),
+              h('span', { style: { fontSize: 11, color: C.dim, whiteSpace: 'nowrap' } }, '浏览工作区'),
+              h('select', {
+                value: cwd,
+                onChange: (e) => loadSessions(e.target.value),
+                style: {
+                  fontSize: 11, padding: '3px 6px', borderRadius: 6, border: `1px solid ${C.border}`,
+                  background: 'transparent', color: 'inherit', maxWidth: narrow ? '100%' : 190,
+                },
+              }, workspaces.map((w) => h('option', { key: w.id, value: w.path }, `${w.title} · ${w.sessionCount}`))),
             ),
-            h('div', { style: { overflow: 'auto', flex: 1, minHeight: 0 } },
-              !connected ? h('div', { style: { padding: 12, fontSize: 12, color: C.dim } }, tt('noRepo'))
-                : (visibleRemote.length + (remote.files || []).length) === 0
-                  ? h('div', { style: { padding: 12, fontSize: 12, color: C.dim } }, tt('emptyRemote'))
-                  : h('div', null, [
-                    ...visibleRemote.map((s) => h('label', {
-                      key: 's:' + s.id,
-                      style: { display: 'flex', gap: 8, alignItems: 'center', padding: '6px 12px', borderBottom: `1px solid ${C.border}`, fontSize: 12, cursor: 'pointer' },
+            h('div', {
+              style: {
+                padding: '6px 10px', borderBottom: `1px solid ${C.border}`,
+                display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap',
+              },
+            },
+              h('input', {
+                placeholder: '搜索会话…',
+                value: search,
+                onChange: (e) => setSearch(e.target.value),
+                style: {
+                  flex: 1, minWidth: 110, fontSize: 12, padding: '4px 8px', borderRadius: 6,
+                  border: `1px solid ${C.border}`, background: 'transparent', color: 'inherit',
+                },
+              }),
+              h('label', { style: { fontSize: 11, color: C.dim, display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' } },
+                h('input', { type: 'checkbox', checked: onlyUnsynced, onChange: (e) => setOnlyUnsynced(e.target.checked) }),
+                '只看未同步'),
+              h('label', { style: { fontSize: 11, color: C.dim, display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' } },
+                h('input', { type: 'checkbox', checked: showSubagents, onChange: (e) => setShowSubagents(e.target.checked) }),
+                '含子代理'),
+              h(MiniBtn, { onClick: selectAllVisible }, '全选'),
+              h(MiniBtn, { onClick: selectUnsynced }, '选未同步'),
+              h(MiniBtn, { onClick: clearSelection }, '清空'),
+            ),
+            h('div', { style: { flex: 1, minHeight: 0, overflow: 'auto' } },
+              loading ? h('div', { style: { padding: 12, fontSize: 12, color: C.dim } }, tt('loading'))
+                : localCount === 0 ? h('div', { style: { padding: 12, fontSize: 12, color: C.dim } }, tt('emptyLocal'))
+                  : visibleSessions.map((s) => {
+                    const b = SYNC_BADGE[s.sync] || SYNC_BADGE['not-uploaded'];
+                    const asking = confirmDel && confirmDel.scope === 'local' && confirmDel.id === s.id;
+                    return h('label', {
+                      key: s.id,
+                      title: `${s.title || s.id}\n${fmtBytes(s.bytes)} · ${fmtAgo(s.mtimeMs)}`,
+                      style: {
+                        display: 'flex', gap: 8, alignItems: 'center', padding: narrow ? '10px 12px' : '6px 12px',
+                        borderBottom: `1px solid ${C.border}`, fontSize: 12, cursor: 'pointer',
+                      },
                     },
                       h('input', {
-                        type: 'checkbox', checked: Boolean(selectedRemote[s.id]),
-                        onChange: (e) => setSelectedRemote((v) => ({ ...v, [s.id]: e.target.checked })),
+                        type: 'checkbox', checked: Boolean(selected[s.id]),
+                        onChange: (e) => setSelected((v) => ({ ...v, [s.id]: e.target.checked })),
                       }),
-                      h('span', { style: { color: C.dim, flexShrink: 0, minWidth: 52 } }, s.project || '-'),
                       h('span', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
-                        '💬 ' + (s.title || s.id)),
-                      h('span', { style: { color: C.dim, flexShrink: 0 } }, fmtBytes(s.bytes)),
+                        s.title || s.id),
+                      s.active ? h('span', { style: { color: '#f59e0b', flexShrink: 0, fontSize: 11 } }, '活跃') : null,
+                      h('span', { style: { color: b.color, flexShrink: 0, fontSize: 11, minWidth: 52, textAlign: 'right' } }, b.text),
+                      narrow ? null : h('span', { style: { color: C.dim, flexShrink: 0, width: 62, textAlign: 'right' } }, fmtBytes(s.bytes)),
+                      narrow ? null : h('span', { style: { color: C.dim, flexShrink: 0, width: 58, textAlign: 'right' } }, fmtAgo(s.mtimeMs)),
                       h('button', {
-                        title: '从仓库删除（不影响本机会话）',
-                        onClick: (e) => { e.preventDefault(); e.stopPropagation(); requestDelete('remote', s.id); },
+                        title: '从本机删除（不影响 GitHub 仓库）',
+                        onClick: (e) => { e.preventDefault(); e.stopPropagation(); requestDelete('local', s.id); },
                         style: {
-                          flexShrink: 0, fontSize: 11, padding: '1px 5px', borderRadius: 5, cursor: 'pointer',
+                          flexShrink: 0, fontSize: 11, padding: narrow ? '4px 8px' : '1px 5px', borderRadius: 5, cursor: 'pointer',
                           border: '1px solid rgba(127,127,127,0.3)', background: 'transparent',
-                          color: confirmDel && confirmDel.scope === 'remote' && confirmDel.id === s.id ? '#ef4444' : C.dim,
+                          color: asking ? '#ef4444' : C.dim,
                         },
-                      }, confirmDel && confirmDel.scope === 'remote' && confirmDel.id === s.id ? '确认删?' : '🗑'),
-                    )),
+                      }, asking ? '确认删?' : '🗑'),
+                    );
+                  }),
+            ),
+            h('div', {
+              style: {
+                borderTop: `1px solid ${C.border}`, padding: '8px 12px',
+                display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
+              },
+            },
+              h('span', { style: { fontSize: 11, color: C.dim, whiteSpace: 'nowrap' } },
+                busy ? '处理中…' : `已选 ${pickedLocal().length}`),
+              h('span', { style: { flex: 1 } }),
+              h(Button, {
+                disabled: busy || Boolean(progress) || !connected || unsyncedCount === 0,
+                onClick: () => {
+                  const ids = sessions
+                    .filter((s) => (showSubagents || !isNoise(s)) && s.sync !== 'synced')
+                    .map((s) => s.id);
+                  if (!ids.length) { setNote('没有未同步的会话'); return; }
+                  setSelected(Object.fromEntries(ids.map((id) => [id, true])));
+                  previewUpload(ids);
+                },
+              }, `同步此工作区${unsyncedCount ? `（${unsyncedCount}）` : ''}`),
+              h(Button, {
+                primary: true,
+                disabled: busy || Boolean(progress) || !connected || pickedLocal().length === 0,
+                onClick: () => previewUpload(),
+              }, `上传到仓库${pickedLocal().length ? `（${pickedLocal().length}）` : ''}`),
+            ),
+          ) : null,
+
+          // ---------- 仓库 ----------
+          (!narrow || tab === 'remote') ? h('section', {
+            style: {
+              flex: 1, minWidth: 0, minHeight: 0, border: `1px solid ${C.border}`, borderRadius: 10,
+              display: 'flex', flexDirection: 'column', overflow: 'hidden',
+            },
+          },
+            h('div', {
+              style: {
+                padding: '8px 12px', borderBottom: `1px solid ${C.border}`,
+                display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
+              },
+            },
+              h('span', { style: { fontSize: 12, fontWeight: 600 } }, tt('remote')),
+              h('span', { style: { fontSize: 11, color: C.dim } },
+                `${visibleRemote.length} 会话${hiddenRemote ? `（藏 ${hiddenRemote}）` : ''}${status?.enableFiles ? ` · ${(remote.files || []).length} 文件 · ${remote.attachments || 0} 附件` : ''}`),
+              remoteStale ? h('span', { style: { color: '#f59e0b', fontSize: 11 } }, '· 上次结果（读取失败）') : null,
+              h('span', { style: { flex: 1 } }),
+              h('span', { style: { fontSize: 11, color: C.dim, whiteSpace: 'nowrap' } }, '下载到'),
+              h('select', {
+                value: targetCwd,
+                onChange: (e) => setTarget(e.target.value),
+                disabled: !connected,
+                title: '下载的会话落到本机哪个工作区',
+                style: {
+                  fontSize: 11, padding: '3px 6px', borderRadius: 6,
+                  border: `1px solid ${connected ? 'rgba(99,102,241,0.55)' : C.border}`,
+                  background: 'transparent', color: 'inherit', maxWidth: narrow ? '100%' : 190,
+                },
+              }, workspaces.map((w) => h('option', { key: w.id, value: w.path }, `${w.title} · ${w.sessionCount}`))),
+            ),
+            h('div', { style: { flex: 1, minHeight: 0, overflow: 'auto' } },
+              !connected ? h('div', { style: { padding: 12, fontSize: 12, color: C.dim } }, tt('noRepo'))
+                : (visibleRemote.length + (status?.enableFiles ? (remote.files || []).length : 0)) === 0
+                  ? h('div', { style: { padding: 12, fontSize: 12, color: C.dim } }, tt('emptyRemote'))
+                  : h('div', null, [
+                    ...visibleRemote.map((s) => {
+                      const asking = confirmDel && confirmDel.scope === 'remote' && confirmDel.id === s.id;
+                      return h('label', {
+                        key: 's:' + s.id,
+                        title: `${s.title || s.id}\n${s.project || '-'} · ${fmtBytes(s.bytes)}`,
+                        style: {
+                          display: 'flex', gap: 8, alignItems: 'center', padding: narrow ? '10px 12px' : '6px 12px',
+                          borderBottom: `1px solid ${C.border}`, fontSize: 12, cursor: 'pointer',
+                        },
+                      },
+                        h('input', {
+                          type: 'checkbox', checked: Boolean(selectedRemote[s.id]),
+                          onChange: (e) => setSelectedRemote((v) => ({ ...v, [s.id]: e.target.checked })),
+                        }),
+                        narrow ? null : h('span', { style: { color: C.dim, flexShrink: 0, minWidth: 52 } }, s.project || '-'),
+                        h('span', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
+                          '💬 ' + (s.title || s.id)),
+                        h('span', { style: { color: C.dim, flexShrink: 0 } }, fmtBytes(s.bytes)),
+                        h('button', {
+                          title: '从仓库删除（不影响本机会话）',
+                          onClick: (e) => { e.preventDefault(); e.stopPropagation(); requestDelete('remote', s.id); },
+                          style: {
+                            flexShrink: 0, fontSize: 11, padding: narrow ? '4px 8px' : '1px 5px', borderRadius: 5, cursor: 'pointer',
+                            border: '1px solid rgba(127,127,127,0.3)', background: 'transparent',
+                            color: asking ? '#ef4444' : C.dim,
+                          },
+                        }, asking ? '确认删?' : '🗑'),
+                      );
+                    }),
                     ...(status?.enableFiles ? (remote.files || []) : []).map((f) => h('label', {
                       key: 'f:' + f.path,
                       title: f.path,
-                      style: { display: 'flex', gap: 8, alignItems: 'center', padding: '5px 12px', borderBottom: `1px solid ${C.border}`, fontSize: 12, color: C.dim, cursor: 'pointer' },
+                      style: {
+                        display: 'flex', gap: 8, alignItems: 'center', padding: narrow ? '10px 12px' : '5px 12px',
+                        borderBottom: `1px solid ${C.border}`, fontSize: 12, color: C.dim, cursor: 'pointer',
+                      },
                     },
                       h('input', {
                         type: 'checkbox', checked: Boolean(selectedFiles[f.path]),
@@ -873,120 +1100,50 @@ window.__ModuleLoader__.load({
                     )),
                   ]),
             ),
-          ),
-          h('div', { style: { flex: 1, minWidth: 0, border: `1px solid ${C.border}`, borderRadius: 8, display: 'flex', flexDirection: 'column', minHeight: 0 } },
-            h('div', { style: { padding: '8px 12px', fontSize: 12, fontWeight: 600, borderBottom: `1px solid ${C.border}`, display: 'flex', gap: 8, alignItems: 'center' } },
-              h('span', null, tt('local')),
-              h('span', { style: { color: C.dim, fontWeight: 400 } },
-                `${localCount} ${tt('sessions')}${hiddenSessions ? ` · 隐藏 ${hiddenSessions}（子代理/空会话）` : ''}`),
-              h('span', { style: { flex: 1 } }),
-              h('select', {
-                value: cwd,
-                onChange: (e) => loadSessions(e.target.value),
-                style: { fontSize: 11, padding: '2px 4px', borderRadius: 5, border: `1px solid ${C.border}`, background: 'transparent', color: 'inherit', maxWidth: 190 },
-              }, workspaces.map((w) => h('option', { key: w.id, value: w.path }, `${w.title} · ${w.sessionCount}`))),
-            ),
-            // 搜索 + 过滤 + 批量
-            h('div', { style: { display: 'flex', gap: 6, padding: '6px 10px', borderBottom: `1px solid ${C.border}`, alignItems: 'center' } },
-              h('input', {
-                placeholder: '搜索会话…',
-                value: search,
-                onChange: (e) => setSearch(e.target.value),
-                style: {
-                  flex: 1, minWidth: 0, fontSize: 11, padding: '3px 7px', borderRadius: 5,
-                  border: `1px solid ${C.border}`, background: 'transparent', color: 'inherit',
-                },
-              }),
-              h('label', { style: { fontSize: 11, color: C.dim, display: 'flex', alignItems: 'center', gap: 3, cursor: 'pointer', whiteSpace: 'nowrap' } },
-                h('input', { type: 'checkbox', checked: onlyUnsynced, onChange: (e) => setOnlyUnsynced(e.target.checked) }),
-                '只看未同步'),
-              h(MiniBtn, { onClick: selectAllVisible }, '全选'),
-              h(MiniBtn, { onClick: selectUnsynced }, '选未同步'),
-              h(MiniBtn, { onClick: clearSelection }, '清空'),
-            ),
-            h('div', { style: { overflow: 'auto', flex: 1, minHeight: 0 } },
-              loading ? h('div', { style: { padding: 12, fontSize: 12, color: C.dim } }, tt('loading'))
-                : localCount === 0 ? h('div', { style: { padding: 12, fontSize: 12, color: C.dim } }, tt('emptyLocal'))
-                  : visibleSessions.map((s) => h('label', {
-                    key: s.id,
-                    style: { display: 'flex', gap: 8, alignItems: 'center', padding: '6px 12px', borderBottom: `1px solid ${C.border}`, fontSize: 12, cursor: 'pointer' },
-                  },
-                    h('input', {
-                      type: 'checkbox', checked: Boolean(selected[s.id]),
-                      onChange: (e) => setSelected((v) => ({ ...v, [s.id]: e.target.checked })),
-                    }),
-                    h('span', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
-                      s.title || s.id),
-                    s.active ? h('span', { style: { color: '#f59e0b', flexShrink: 0, fontSize: 11 } }, '活跃') : null,
-                    (() => {
-                      const b = SYNC_BADGE[s.sync] || SYNC_BADGE['not-uploaded'];
-                      return h('span', { style: { color: b.color, flexShrink: 0, fontSize: 11, width: 56, textAlign: 'right' } }, b.text);
-                    })(),
-                    h('span', { style: { color: C.dim, flexShrink: 0, width: 62, textAlign: 'right' } }, fmtBytes(s.bytes)),
-                    h('span', { style: { color: C.dim, flexShrink: 0, width: 58, textAlign: 'right' } }, fmtAgo(s.mtimeMs)),
-                    h('button', {
-                      title: '从本机删除（不影响 GitHub 仓库）',
-                      onClick: (e) => { e.preventDefault(); e.stopPropagation(); requestDelete('local', s.id); },
-                      style: {
-                        flexShrink: 0, fontSize: 11, padding: '1px 5px', borderRadius: 5, cursor: 'pointer',
-                        border: '1px solid rgba(127,127,127,0.3)', background: 'transparent',
-                        color: confirmDel && confirmDel.scope === 'local' && confirmDel.id === s.id ? '#ef4444' : C.dim,
-                      },
-                    }, confirmDel && confirmDel.scope === 'local' && confirmDel.id === s.id ? '确认删?' : '🗑'),
-                  )),
-            ),
-          ),
-        ),
-
-        // 底部动作条
-        h('div', { style: { display: 'flex', gap: 8, alignItems: 'center', borderTop: `1px solid ${C.border}`, paddingTop: 10 } },
-          h('span', { style: { fontSize: 12, color: C.dim } },
-            busy ? '处理中…' : `已选：本地 ${pickedLocal().length} · 远端会话 ${pickedRemote().length} · 远端文件 ${Object.keys(selectedFiles).filter((k) => selectedFiles[k]).length}`),
-          h('span', { style: { flex: 1 } }),
-          h('label', { style: { fontSize: 12, color: C.dim, display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer', marginRight: 4 } },
-            h('input', {
-              type: 'checkbox', checked: showSubagents,
-              onChange: (e) => setShowSubagents(e.target.checked),
-            }),
-            `含子代理/空会话${hiddenSessions + hiddenRemote ? `（藏 ${hiddenSessions + hiddenRemote}）` : ''}`,
-          ),
-          h(Button, {
-            disabled: busy || Boolean(progress) || !connected || unsyncedCount === 0,
-            onClick: () => {
-              const ids = sessions
-                .filter((s) => (showSubagents || !isNoise(s)) && s.sync !== 'synced')
-                .map((s) => s.id);
-              if (!ids.length) { setNote('没有未同步的会话'); return; }
-              setSelected(Object.fromEntries(ids.map((id) => [id, true])));
-              previewUpload(ids);
-            },
-          }, `同步此工作区${unsyncedCount ? `（${unsyncedCount}）` : ''}`),
-          h(Button, { onClick: () => previewUpload(), disabled: busy || Boolean(progress) || !connected }, '预览上传'),
-          h(Button, { onClick: previewDownload, disabled: busy || Boolean(progress) || !connected }, '下载会话'),
-          ...(status?.enableFiles ? [
-            h(Button, {
-              disabled: busy,
-              onClick: async () => {
-                setBrowser({ path: cwd, dirs: [], files: [], loading: true });
-                try {
-                  const r = await getJson(`${PREFIX}/folder/list?path=${encodeURIComponent(cwd)}`);
-                  setBrowser({ path: cwd, dirs: r.dirs || [], files: r.files || [], loading: false, error: r.ok ? null : r.error });
-                } catch (e) {
-                  setBrowser({ path: cwd, dirs: [], files: [], loading: false, error: String(e && e.message ? e.message : e) });
-                }
+            h('div', {
+              style: {
+                borderTop: `1px solid ${C.border}`, padding: '8px 12px',
+                display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
               },
-            }, '文件夹…'),
-            h(Button, { onClick: previewFiles, disabled: busy || Boolean(progress) || !connected }, '下载文件'),
-          ] : []),
+            },
+              h('span', { style: { fontSize: 11, color: C.dim, whiteSpace: 'nowrap' } },
+                busy ? '处理中…'
+                  : `已选 ${pickedRemote().length} 会话${status?.enableFiles ? ` · ${Object.keys(selectedFiles).filter((k) => selectedFiles[k]).length} 文件` : ''}`),
+              h('span', { style: { flex: 1 } }),
+              ...(status?.enableFiles ? [
+                h(Button, {
+                  disabled: busy,
+                  onClick: async () => {
+                    setBrowser({ path: cwd, dirs: [], files: [], loading: true });
+                    try {
+                      const r = await getJson(`${PREFIX}/folder/list?path=${encodeURIComponent(cwd)}`);
+                      setBrowser({ path: cwd, dirs: r.dirs || [], files: r.files || [], loading: false, error: r.ok ? null : r.error });
+                    } catch (e) {
+                      setBrowser({ path: cwd, dirs: [], files: [], loading: false, error: String(e && e.message ? e.message : e) });
+                    }
+                  },
+                }, '文件夹…'),
+                h(Button, {
+                  disabled: busy || Boolean(progress) || !connected,
+                  onClick: previewFiles,
+                }, '下载文件'),
+              ] : []),
+              h(Button, {
+                primary: true,
+                disabled: busy || Boolean(progress) || !connected
+                  || (pickedRemote().length === 0 && !status?.enableFiles),
+                onClick: previewDownload,
+              }, `下载到本机${pickedRemote().length ? `（${pickedRemote().length}）` : ''}`),
+            ),
+          ) : null,
         ),
-
         // 文件夹浏览器
         browser ? h('div', {
           style: { position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex',
             alignItems: 'center', justifyContent: 'center', zIndex: 31 },
         },
           h('div', {
-            style: { width: 640, maxHeight: '80%', display: 'flex', flexDirection: 'column', background: 'Canvas',
+            style: { width: narrow ? 'calc(100% - 20px)' : 640, maxHeight: '84%', display: 'flex', flexDirection: 'column', background: 'Canvas',
               border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 },
           },
             h('div', { style: { fontWeight: 600, fontSize: 13, marginBottom: 6 } }, '选择要上传的文件夹'),
@@ -1050,13 +1207,24 @@ window.__ModuleLoader__.load({
             alignItems: 'center', justifyContent: 'center', zIndex: 30 },
         },
           h('div', {
-            style: { width: 620, maxHeight: '82%', overflow: 'auto', background: 'Canvas',
-              border: `1px solid ${C.border}`, borderRadius: 12, padding: 16, boxShadow: '0 20px 50px rgba(0,0,0,0.3)' },
+            style: {
+              width: narrow ? 'calc(100% - 20px)' : 620, maxHeight: '86%', overflow: 'auto', background: 'Canvas',
+              border: `1px solid ${C.border}`, borderRadius: 12, padding: 16, boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+            },
           },
             h('div', { style: { fontSize: 14, fontWeight: 600, marginBottom: 6 } },
               preview.kind === 'upload' ? '上传预览'
                 : preview.kind === 'folder' ? '文件夹上传预览'
                   : preview.kind === 'files' ? '文件下载预览' : '会话下载预览'),
+            preview.kind === 'download' ? h('div', {
+              style: {
+                fontSize: 12, marginBottom: 8, padding: '7px 10px', borderRadius: 7,
+                border: '1px solid rgba(99,102,241,0.4)', background: 'rgba(99,102,241,0.08)', wordBreak: 'break-all',
+              },
+            }, [
+              h('span', { key: 'k', style: { color: C.dim } }, '将写入本机工作区：'),
+              h('span', { key: 'v', style: { fontWeight: 600 } }, targetCwd || '（未选择）'),
+            ]) : null,
             h('div', { style: { fontSize: 12, color: C.dim, marginBottom: 10 } },
               Object.entries(preview.data.summary || {}).map(([k, v]) => `${k}=${v}`).join('　')),
             (preview.data.items || []).map((i) => h('div', {
@@ -1127,7 +1295,7 @@ window.__ModuleLoader__.load({
             alignItems: 'center', justifyContent: 'center', zIndex: 40 },
         },
           h('div', {
-            style: { width: 620, maxHeight: '85%', overflow: 'auto', background: 'Canvas',
+            style: { width: narrow ? 'calc(100% - 20px)' : 620, maxHeight: '86%', overflow: 'auto', background: 'Canvas',
               border: `1px solid ${C.border}`, borderRadius: 12, padding: 18 },
           },
             h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: 12 } },
@@ -1178,7 +1346,7 @@ window.__ModuleLoader__.load({
 
         // 设置抽屉
         settingsOpen ? h('div', {
-          style: { position: 'absolute', top: 8, right: 8, width: 340, background: 'Canvas', border: `1px solid ${C.border}`,
+          style: { position: 'absolute', top: 8, right: 8, width: narrow ? 'calc(100% - 16px)' : 340, background: 'Canvas', border: `1px solid ${C.border}`,
             borderRadius: 10, padding: 14, boxShadow: '0 10px 30px rgba(0,0,0,0.25)', zIndex: 20 },
         },
           h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: 10 } },

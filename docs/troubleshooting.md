@@ -19,7 +19,7 @@
 | Same machine: deleted then re-downloaded, `its cwd resolves to …` | The running host still remembers the old header. Restart DSH. A real hand-over from another machine does not hit this, because that host never saw the id. |
 | 0 sessions listed, though the workspace has some | The session directory key for that platform does not match, and the fallback scan missed. Open **Diagnostics → Copy** and send the `平台:` (platform), `会话目录(应有):` (expected session directory) and `sessions 根下 N 个目录:` (directories under the sessions root) lines. |
 | macOS lists nothing | The same key mismatch, which Windows does not trigger. Diagnostics shows the computed name against the real one. |
-| Download lands in the wrong workspace | The target defaults to the workspace you are currently viewing. Change the dropdown before downloading. |
+| Download lands in the wrong workspace | The left pane's **download to** dropdown decides the destination, and it is remembered per machine. Change it there, or open the folder you expect on the left first so the default follows you. |
 | `blocked`: the session already belongs to another workspace | One session belongs to one workspace. Download into the workspace it is attached to, or detach it there first. Force does not override this, by design. |
 | Download reports a fork instead of updating | Both sides changed the session. The remote copy is saved as `*.remote-fork-<stamp>` beside the local file; force one side if you know which is right. |
 | Upload is slow or times out on a large session | The link to `api.github.com` is the bottleneck. Route DSH through the proxy and set `NODE_USE_ENV_PROXY=1`; a 2.5 MB session goes from two minutes to seconds. |
