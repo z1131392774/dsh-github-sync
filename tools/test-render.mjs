@@ -162,6 +162,12 @@ for (const narrow of [false, true]) {
     ok('宽屏两个主操作都在', texts.includes('上传到仓库') && texts.includes('下载到本机'));
   }
 
+  // 颜色契约：面板只认宿主的 --dsw-* 令牌，不许自带品牌色
+  const HEX = /#[0-9a-fA-F]{3,8}/;
+  const strayColor = flatten(tree).flatMap((n) => Object.values(n.props?.style || {}))
+    .filter((v) => typeof v === 'string' && HEX.test(v) && !v.includes('var(--dsw-'));
+  ok(tag + ' 样式不含硬编码颜色（紫色回归）', strayColor.length === 0, JSON.stringify(strayColor.slice(0, 5)));
+
   // 设置抽屉：点开它，检查落位
   const gear = nodes.find((n) => n.type === 'button' && String(n.props?.children?.[0] ?? n.children?.[0] ?? '').includes('⚙'));
   ok(tag + ' 找得到设置按钮', Boolean(gear));
@@ -169,12 +175,18 @@ for (const narrow of [false, true]) {
     gear.props.onClick();
     hookIndex = 0;
     tree = Panel({ t: (k) => k });
-    const drawer = flatten(tree).find((n) => n.props?.style && n.props.style.background === 'Canvas'
-      && (n.props.style.position === 'fixed' || n.props.style.position === 'absolute'));
+    const drawer = flatten(tree).find((n) => {
+      const st = n.props?.style;
+      if (!st || (st.position !== 'fixed' && st.position !== 'absolute')) return false;
+      return flatten(n).some((c) => c.type === 'input' && c.props?.type === 'password');
+    });
     ok(tag + ' 设置抽屉打开', Boolean(drawer));
     if (drawer) {
       const st = drawer.props.style;
       ok(tag + ' 设置里有 token 输入框', flatten(drawer).some((n) => n.type === 'input' && n.props.type === 'password'));
+      const drawerStray = flatten(drawer).flatMap((n) => Object.values(n.props?.style || {}))
+        .filter((v) => typeof v === 'string' && /#[0-9a-fA-F]{3,8}/.test(v) && !v.includes('var(--dsw-'));
+      ok(tag + ' 设置面板不含硬编码颜色', drawerStray.length === 0, JSON.stringify(drawerStray.slice(0, 5)));
       if (narrow) {
         ok('窄屏设置抽屉贴底', st.position === 'fixed' && st.bottom === 8, JSON.stringify([st.position, st.bottom]));
         ok('窄屏设置抽屉可滚', st.overflowY === 'auto' && st.maxHeight === 'calc(100vh - 16px)');

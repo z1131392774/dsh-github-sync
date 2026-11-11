@@ -8,6 +8,8 @@ How to change this plugin and how to tell the change is done. The documentation 
 
 `index.js` runs in the host process: it owns the HTTP routes, the three agent tools, and the state file. `client.js` runs in the browser panel and ships unbuilt, so no bundler rewrites it and no dependency may be imported into it. `lib/` holds the parts both halves reason about — the session file format, the plan builders, the GitHub client.
 
+Panel styling comes from the host, not from the plugin. Colors resolve through the host's `--dsw-*` custom properties — `--dsw-alias-label-tertiary` for secondary text, `--dsw-alias-border-l2` for hairlines, `--dsw-alias-state-business-primary` for the accent, `--dsw-alias-state-error-secondary` for the softer conflict color — each with a literal fallback for the case where the panel renders outside the app shell. A hex value written directly into a style is a bug; `tools/test-render.mjs` fails on one.
+
 A plan builder is pure in the sense that matters: it reads the local disk and the remote index, and returns the list of actions. It writes nothing. Everything that writes happens afterwards, in one place, with the plan in hand. Keep it that way; a plan that is also an executor cannot be previewed honestly.
 
 ## Change discipline
@@ -48,6 +50,7 @@ Read your own `git diff` top to bottom before handing off.
 - Does the preview path still write nothing, and does the execute path still consume its preview token?
 - Do the errors keep their cause and their Chinese wording?
 - Do the docs and the Chinese twins still agree with the behavior?
+- Do the styles resolve through `--dsw-*` tokens, with no hardcoded color left behind?
 - Are tokens, device ids, and absolute paths absent from code, tests, and logs?
 - If someone reverted one hunk, would a test or the audit fail? If not, that hunk is unverified.
 

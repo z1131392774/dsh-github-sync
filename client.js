@@ -55,11 +55,26 @@ window.__ModuleLoader__.load({
       return res.json();
     };
 
-    const C = {
-      border: 'rgba(127,127,127,0.25)',
-      dim: 'rgba(127,127,127,0.9)',
-      pill: 'rgba(127,127,127,0.12)',
+    // 宿主（DSH Web）的设计令牌。硬编码色值在深色主题下会失配，
+    // 所以这里只写令牌名，具体色值交给主题解析；括号里是拿不到令牌时的兜底。
+    const K = {
+      accent: 'var(--dsw-alias-state-business-primary, #4d6bfe)',
+      accentSoft: 'color-mix(in srgb, var(--dsw-alias-state-business-primary, #4d6bfe) 12%, transparent)',
+      accentLine: 'color-mix(in srgb, var(--dsw-alias-state-business-primary, #4d6bfe) 55%, transparent)',
+      success: 'var(--dsw-alias-state-success-primary, #22c55e)',
+      warn: 'var(--dsw-alias-state-warn-primary, #f59e0b)',
+      error: 'var(--dsw-alias-state-error-primary, #ef4444)',
+      errorSoft: 'var(--dsw-alias-state-error-secondary, #ef4444)',
+      dim: 'var(--dsw-alias-label-tertiary, rgba(127,127,127,0.9))',
+      second: 'var(--dsw-alias-label-secondary, rgba(127,127,127,0.9))',
+      border: 'var(--dsw-alias-border-l2, rgba(127,127,127,0.25))',
+      hover: 'var(--dsw-alias-interactive-bg-hover, rgba(127,127,127,0.12))',
+      surface: 'var(--dsw-specific-menu, Canvas)',
+      backdrop: 'var(--dsw-alias-bg-base, Canvas)',
+      mask: 'var(--dsw-alias-bg-mask-drop, rgba(0,0,0,0.35))',
+      shadow: 'var(--dsw-elevation-panel, 0 12px 30px rgba(0,0,0,0.25))',
     };
+    const C = { border: K.border, dim: K.dim, pill: K.hover };
 
     const PHASE_LABEL = {
       starting: '准备中', scan: '读取会话', fetch: '拉取远端', ref: '读取远端', seed: '初始化空仓',
@@ -70,12 +85,12 @@ window.__ModuleLoader__.load({
 
     // 同步状态徽标：一眼看出哪条没传、哪边更新
     const SYNC_BADGE = {
-      synced: { text: '已同步', color: '#22c55e' },
-      'local-ahead': { text: '本地更新', color: '#3b82f6' },
-      'remote-ahead': { text: '远端更新', color: '#f59e0b' },
-      'not-uploaded': { text: '未上传', color: 'rgba(127,127,127,0.85)' },
-      changed: { text: '有变化', color: '#a855f7' },
-      diverged: { text: '分叉', color: '#ef4444' },
+      synced: { text: '已同步', color: K.success },
+      'local-ahead': { text: '本地更新', color: K.accent },
+      'remote-ahead': { text: '远端更新', color: K.warn },
+      'not-uploaded': { text: '未上传', color: K.dim },
+      changed: { text: '有变化', color: K.errorSoft },
+      diverged: { text: '分叉', color: K.error },
     };
 
     function MiniBtn({ children, onClick, disabled, title }) {
@@ -83,7 +98,7 @@ window.__ModuleLoader__.load({
         onClick, disabled, title,
         style: {
           fontSize: 11, padding: '2px 7px', borderRadius: 5, cursor: disabled ? 'not-allowed' : 'pointer',
-          border: '1px solid rgba(127,127,127,0.3)', background: 'transparent', color: 'inherit',
+          border: `1px solid ${C.border}`, background: 'transparent', color: 'inherit',
           opacity: disabled ? 0.5 : 1, whiteSpace: 'nowrap',
         },
       }, children);
@@ -121,7 +136,7 @@ window.__ModuleLoader__.load({
         onClick, disabled, title,
         style: {
           padding: '5px 10px', borderRadius: 6, cursor: disabled ? 'not-allowed' : 'pointer',
-          border: `1px solid ${C.border}`, background: primary ? 'rgba(99,102,241,0.18)' : 'transparent',
+          border: `1px solid ${C.border}`, background: primary ? K.accentSoft : 'transparent',
           color: 'inherit', font: 'inherit', fontSize: 12, opacity: disabled ? 0.5 : 1,
         },
       }, children);
@@ -130,7 +145,7 @@ window.__ModuleLoader__.load({
     function Dot({ on }) {
       return h('span', {
         style: { display: 'inline-block', width: 8, height: 8, borderRadius: 4, marginRight: 6,
-          background: on ? '#22c55e' : 'rgba(127,127,127,0.6)' },
+          background: on ? K.success : K.dim, opacity: on ? 1 : 0.6 },
       });
     }
 
@@ -684,8 +699,8 @@ window.__ModuleLoader__.load({
       const targetCwd = (knownTarget ? target : '') || (status && status.defaultCwd) || '';
       const segStyle = (on) => ({
         flex: 1, fontSize: 12, padding: '8px 12px', borderRadius: 7, cursor: 'pointer',
-        border: `1px solid ${on ? 'rgba(99,102,241,0.6)' : C.border}`,
-        background: on ? 'rgba(99,102,241,0.12)' : 'transparent',
+        border: `1px solid ${on ? K.accentLine : C.border}`,
+        background: on ? K.accentSoft : 'transparent',
         color: 'inherit', fontWeight: on ? 600 : 400,
       });
 
@@ -747,8 +762,8 @@ window.__ModuleLoader__.load({
         popover === 'devices' ? h('div', {
           style: {
             position: narrow ? 'fixed' : 'absolute', top: 56, right: 16, width: narrow ? 'calc(100% - 24px)' : 360, maxHeight: '70%', overflow: 'auto',
-            background: 'Canvas', border: `1px solid ${C.border}`, borderRadius: 10, padding: 12,
-            boxShadow: '0 12px 30px rgba(0,0,0,0.25)', zIndex: 25, fontSize: 12,
+            background: K.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 12,
+            boxShadow: K.shadow, zIndex: 25, fontSize: 12,
           },
         },
           h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: 8 } },
@@ -772,8 +787,8 @@ window.__ModuleLoader__.load({
         popover === 'diag' ? h('div', {
           style: {
             position: narrow ? 'fixed' : 'absolute', top: 56, right: 16, width: narrow ? 'calc(100% - 24px)' : 560, maxHeight: '70%', overflow: 'auto',
-            background: 'Canvas', border: `1px solid ${C.border}`, borderRadius: 10, padding: 12,
-            boxShadow: '0 12px 30px rgba(0,0,0,0.25)', zIndex: 25, fontSize: 12,
+            background: K.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 12,
+            boxShadow: K.shadow, zIndex: 25, fontSize: 12,
           },
         },
           h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: 8, gap: 6 } },
@@ -801,8 +816,8 @@ window.__ModuleLoader__.load({
         popover === 'history' ? h('div', {
           style: {
             position: narrow ? 'fixed' : 'absolute', top: 56, right: 16, width: narrow ? 'calc(100% - 24px)' : 420, maxHeight: '70%', overflow: 'auto',
-            background: 'Canvas', border: `1px solid ${C.border}`, borderRadius: 10, padding: 12,
-            boxShadow: '0 12px 30px rgba(0,0,0,0.25)', zIndex: 25, fontSize: 12,
+            background: K.surface, border: `1px solid ${C.border}`, borderRadius: 10, padding: 12,
+            boxShadow: K.shadow, zIndex: 25, fontSize: 12,
           },
         },
           h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: 8 } },
@@ -814,7 +829,7 @@ window.__ModuleLoader__.load({
             historyRows.map((r, i) => h('div', {
               key: i, style: { display: 'flex', gap: 8, padding: '5px 0', borderBottom: `1px solid ${C.border}` },
             },
-              h('span', { style: { flexShrink: 0, color: r.kind === 'upload' ? '#3b82f6' : '#22c55e' } },
+              h('span', { style: { flexShrink: 0, color: r.kind === 'upload' ? K.accent : K.success } },
                 r.kind === 'upload' ? '↑ 上传' : '↓ 下载'),
               h('span', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
                 `${r.files ?? 0} 个文件` + (r.commit ? ` · ${String(r.commit).slice(0, 7)}` : '') + (r.failed ? ` · ${r.failed} 条挂载失败` : '')),
@@ -847,7 +862,7 @@ window.__ModuleLoader__.load({
                 style: {
                   height: '100%',
                   width: `${progress.total ? Math.max(2, Math.round((progress.done / progress.total) * 100)) : 5}%`,
-                  background: '#6366f1', transition: 'width .25s ease',
+                  background: K.accent, transition: 'width .25s ease',
                 },
               })),
             h('span', { style: { color: C.dim, whiteSpace: 'nowrap' } },
@@ -871,7 +886,7 @@ window.__ModuleLoader__.load({
                 h('span', {
                   style: {
                     width: 16, textAlign: 'center', flexShrink: 0,
-                    color: f.state === 'skipped' ? '#f59e0b' : f.state === 'done' ? '#22c55e' : C.dim,
+                    color: f.state === 'skipped' ? K.warn : f.state === 'done' ? K.success : C.dim,
                   },
                 }, STATE_ICON[f.state] || '·'),
                 h('span', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
@@ -885,11 +900,11 @@ window.__ModuleLoader__.load({
           ) : null,
         ) : null,
 
-        err ? h('div', { style: { fontSize: 12, color: '#ef4444' } }, err) : null,
+        err ? h('div', { style: { fontSize: 12, color: K.error } }, err) : null,
         note ? h('div', { style: { fontSize: 12, color: C.dim } }, note) : null,
 
         // 本机 / 仓库 两区：宽屏并排，窄屏单区切换
-        narrow ? h('div', { style: { display: 'flex', gap: 6, position: 'sticky', top: 0, zIndex: 3, background: 'Canvas', padding: '2px 0' } },
+        narrow ? h('div', { style: { display: 'flex', gap: 6, position: 'sticky', top: 0, zIndex: 3, background: K.backdrop, padding: '2px 0' } },
           h('button', { onClick: () => setTab('local'), style: segStyle(tab === 'local') },
             `本机 · ${localCount}`),
           h('button', { onClick: () => setTab('remote'), style: segStyle(tab === 'remote') },
@@ -975,7 +990,7 @@ window.__ModuleLoader__.load({
                       }),
                       h('span', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
                         s.title || s.id),
-                      s.active ? h('span', { style: { color: '#f59e0b', flexShrink: 0, fontSize: 11 } }, '活跃') : null,
+                      s.active ? h('span', { style: { color: K.warn, flexShrink: 0, fontSize: 11 } }, '活跃') : null,
                       h('span', { style: { color: b.color, flexShrink: 0, fontSize: 11, minWidth: 52, textAlign: 'right' } }, b.text),
                       narrow ? null : h('span', { style: { color: C.dim, flexShrink: 0, width: 62, textAlign: 'right' } }, fmtBytes(s.bytes)),
                       narrow ? null : h('span', { style: { color: C.dim, flexShrink: 0, width: 58, textAlign: 'right' } }, fmtAgo(s.mtimeMs)),
@@ -984,8 +999,8 @@ window.__ModuleLoader__.load({
                         onClick: (e) => { e.preventDefault(); e.stopPropagation(); requestDelete('local', s.id); },
                         style: {
                           flexShrink: 0, fontSize: 11, padding: narrow ? '4px 8px' : '1px 5px', borderRadius: 5, cursor: 'pointer',
-                          border: '1px solid rgba(127,127,127,0.3)', background: 'transparent',
-                          color: asking ? '#ef4444' : C.dim,
+                          border: `1px solid ${C.border}`, background: 'transparent',
+                          color: asking ? K.error : C.dim,
                         },
                       }, asking ? '确认删?' : '🗑'),
                     );
@@ -995,7 +1010,7 @@ window.__ModuleLoader__.load({
               style: {
                 borderTop: `1px solid ${C.border}`, padding: '8px 12px',
                 display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
-                ...(narrow ? { position: 'sticky', bottom: 0, zIndex: 3, background: 'Canvas' } : {}),
+                ...(narrow ? { position: 'sticky', bottom: 0, zIndex: 3, background: K.backdrop } : {}),
               },
             },
               h('span', { style: { fontSize: 11, color: C.dim, whiteSpace: 'nowrap' } },
@@ -1036,7 +1051,7 @@ window.__ModuleLoader__.load({
               h('span', { style: { fontSize: 12, fontWeight: 600 } }, tt('remote')),
               h('span', { style: { fontSize: 11, color: C.dim } },
                 `${visibleRemote.length} 会话${hiddenRemote ? `（藏 ${hiddenRemote}）` : ''}${status?.enableFiles ? ` · ${(remote.files || []).length} 文件 · ${remote.attachments || 0} 附件` : ''}`),
-              remoteStale ? h('span', { style: { color: '#f59e0b', fontSize: 11 } }, '· 上次结果（读取失败）') : null,
+              remoteStale ? h('span', { style: { color: K.warn, fontSize: 11 } }, '· 上次结果（读取失败）') : null,
               h('span', { style: { flex: 1 } }),
               h('span', { style: { fontSize: 11, color: C.dim, whiteSpace: 'nowrap' } }, '下载到'),
               h('select', {
@@ -1046,7 +1061,7 @@ window.__ModuleLoader__.load({
                 title: '下载的会话落到本机哪个工作区',
                 style: {
                   fontSize: 11, padding: '3px 6px', borderRadius: 6,
-                  border: `1px solid ${connected ? 'rgba(99,102,241,0.55)' : C.border}`,
+                  border: `1px solid ${connected ? K.accentLine : C.border}`,
                   background: 'transparent', color: 'inherit', maxWidth: narrow ? '100%' : 190,
                 },
               }, workspaces.map((w) => h('option', { key: w.id, value: w.path }, `${w.title} · ${w.sessionCount}`))),
@@ -1079,8 +1094,8 @@ window.__ModuleLoader__.load({
                           onClick: (e) => { e.preventDefault(); e.stopPropagation(); requestDelete('remote', s.id); },
                           style: {
                             flexShrink: 0, fontSize: 11, padding: narrow ? '4px 8px' : '1px 5px', borderRadius: 5, cursor: 'pointer',
-                            border: '1px solid rgba(127,127,127,0.3)', background: 'transparent',
-                            color: asking ? '#ef4444' : C.dim,
+                            border: `1px solid ${K.border}`, background: 'transparent',
+                            color: asking ? K.error : C.dim,
                           },
                         }, asking ? '确认删?' : '🗑'),
                       );
@@ -1108,7 +1123,7 @@ window.__ModuleLoader__.load({
               style: {
                 borderTop: `1px solid ${C.border}`, padding: '8px 12px',
                 display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap',
-                ...(narrow ? { position: 'sticky', bottom: 0, zIndex: 3, background: 'Canvas' } : {}),
+                ...(narrow ? { position: 'sticky', bottom: 0, zIndex: 3, background: K.backdrop } : {}),
               },
             },
               h('span', { style: { fontSize: 11, color: C.dim, whiteSpace: 'nowrap' } },
@@ -1144,16 +1159,16 @@ window.__ModuleLoader__.load({
         ),
         // 文件夹浏览器
         browser ? h('div', {
-          style: { position: narrow ? 'fixed' : 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex',
+          style: { position: narrow ? 'fixed' : 'absolute', inset: 0, background: K.mask, display: 'flex',
             alignItems: 'center', justifyContent: 'center', zIndex: 31 },
         },
           h('div', {
-            style: { width: narrow ? 'calc(100% - 20px)' : 640, maxHeight: '84%', display: 'flex', flexDirection: 'column', background: 'Canvas',
+            style: { width: narrow ? 'calc(100% - 20px)' : 640, maxHeight: '84%', display: 'flex', flexDirection: 'column', background: K.surface,
               border: `1px solid ${C.border}`, borderRadius: 12, padding: 16 },
           },
             h('div', { style: { fontWeight: 600, fontSize: 13, marginBottom: 6 } }, '选择要上传的文件夹'),
             h('div', { style: { fontSize: 11, color: C.dim, marginBottom: 8, wordBreak: 'break-all' } }, browser.path),
-            browser.error ? h('div', { style: { fontSize: 12, color: '#ef4444', marginBottom: 8 } }, browser.error) : null,
+            browser.error ? h('div', { style: { fontSize: 12, color: K.error, marginBottom: 8 } }, browser.error) : null,
             h('div', { style: { marginBottom: 8 } },
               h(Button, {
                 onClick: async () => {
@@ -1208,13 +1223,13 @@ window.__ModuleLoader__.load({
 
         // 预览遮罩
         preview ? h('div', {
-          style: { position: narrow ? 'fixed' : 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex',
+          style: { position: narrow ? 'fixed' : 'absolute', inset: 0, background: K.mask, display: 'flex',
             alignItems: 'center', justifyContent: 'center', zIndex: 30 },
         },
           h('div', {
             style: {
-              width: narrow ? 'calc(100% - 20px)' : 620, maxHeight: '86%', overflow: 'auto', background: 'Canvas',
-              border: `1px solid ${C.border}`, borderRadius: 12, padding: 16, boxShadow: '0 20px 50px rgba(0,0,0,0.3)',
+              width: narrow ? 'calc(100% - 20px)' : 620, maxHeight: '86%', overflow: 'auto', background: K.surface,
+              border: `1px solid ${C.border}`, borderRadius: 12, padding: 16, boxShadow: K.shadow,
             },
           },
             h('div', { style: { fontSize: 14, fontWeight: 600, marginBottom: 6 } },
@@ -1224,7 +1239,7 @@ window.__ModuleLoader__.load({
             preview.kind === 'download' ? h('div', {
               style: {
                 fontSize: 12, marginBottom: 8, padding: '7px 10px', borderRadius: 7,
-                border: '1px solid rgba(99,102,241,0.4)', background: 'rgba(99,102,241,0.08)', wordBreak: 'break-all',
+                border: `1px solid ${K.accentLine}`, background: K.accentSoft, wordBreak: 'break-all',
               },
             }, [
               h('span', { key: 'k', style: { color: C.dim } }, '将写入本机工作区：'),
@@ -1238,13 +1253,13 @@ window.__ModuleLoader__.load({
             },
               h('span', {
                 style: { flexShrink: 0, width: 58, fontWeight: 600,
-                  color: i.action === 'upload' || i.action === 'write' ? '#22c55e'
-                    : i.action === 'blocked' ? '#ef4444'
-                      : i.action === 'fork' ? '#f59e0b' : C.dim },
+                  color: i.action === 'upload' || i.action === 'write' ? K.success
+                    : i.action === 'blocked' ? K.error
+                      : i.action === 'fork' ? K.warn : C.dim },
               }, i.action),
               h('span', { style: { flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
                 i.title || i.id),
-              i.active ? h('span', { style: { color: '#f59e0b', flexShrink: 0, fontSize: 11 } }, '活跃·快照') : null,
+              i.active ? h('span', { style: { color: K.warn, flexShrink: 0, fontSize: 11 } }, '活跃·快照') : null,
               h('span', { style: { color: C.dim, flexShrink: 0, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } },
                 i.reason || ''),
               (i.action === 'blocked' && /远端更新|请先下载/.test(String(i.reason || '')))
@@ -1264,7 +1279,7 @@ window.__ModuleLoader__.load({
               (i.attachments && i.attachments.length
                 ? `附件：${i.attachments.map((a) => a.action + (a.bytes ? '(' + fmtBytes(a.bytes) + ')' : '')).join('、')}`
                 : ''),
-              ...(i.attachmentWarnings || []).map((w, idx) => h('div', { key: idx, style: { color: '#f59e0b' } }, '⚠ ' + w)),
+              ...(i.attachmentWarnings || []).map((w, idx) => h('div', { key: idx, style: { color: K.warn } }, '⚠ ' + w)),
             )),
             progress ? h('div', { style: { marginTop: 12 } },
               h('div', { style: { height: 6, background: C.pill, borderRadius: 3, overflow: 'hidden' } },
@@ -1272,7 +1287,7 @@ window.__ModuleLoader__.load({
                   style: {
                     height: '100%',
                     width: `${progress.total ? Math.max(2, Math.round((progress.done / progress.total) * 100)) : 4}%`,
-                    background: '#6366f1', transition: 'width .25s ease',
+                    background: K.accent, transition: 'width .25s ease',
                   },
                 })),
               h('div', { style: { fontSize: 11, color: C.dim, marginTop: 4, display: 'flex', gap: 8, flexWrap: 'wrap' } },
@@ -1296,11 +1311,11 @@ window.__ModuleLoader__.load({
 
         // 首次配置向导
         popover === 'wizard' ? h('div', {
-          style: { position: narrow ? 'fixed' : 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex',
+          style: { position: narrow ? 'fixed' : 'absolute', inset: 0, background: K.mask, display: 'flex',
             alignItems: 'center', justifyContent: 'center', zIndex: 40 },
         },
           h('div', {
-            style: { width: narrow ? 'calc(100% - 20px)' : 620, maxHeight: '86%', overflow: 'auto', background: 'Canvas',
+            style: { width: narrow ? 'calc(100% - 20px)' : 620, maxHeight: '86%', overflow: 'auto', background: K.surface,
               border: `1px solid ${C.border}`, borderRadius: 12, padding: 18 },
           },
             h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: 12 } },
@@ -1312,9 +1327,9 @@ window.__ModuleLoader__.load({
             wizardStep === 0 ? h('div', { style: { fontSize: 12, lineHeight: 1.9 } },
               h('div', null, '1. 打开 GitHub 新建仓库页面。'),
               h('div', null, '2. 名字随意，勾 Private。'),
-              h('div', { style: { color: '#f59e0b' } }, '3. 不要勾 README、不要勾 .gitignore —— 空仓库最省事。'),
+              h('div', { style: { color: K.warn } }, '3. 不要勾 README、不要勾 .gitignore —— 空仓库最省事。'),
               h('div', { style: { marginTop: 10 } },
-                h('a', { href: 'https://github.com/new', target: '_blank', rel: 'noreferrer', style: { color: '#3b82f6' } }, '打开 github.com/new')),
+                h('a', { href: 'https://github.com/new', target: '_blank', rel: 'noreferrer', style: { color: K.accent } }, '打开 github.com/new')),
             ) : null,
             wizardStep === 1 ? h('div', { style: { fontSize: 12, lineHeight: 1.9 } },
               h('div', null, '1. 打开 Fine-grained tokens 页面。'),
@@ -1322,7 +1337,7 @@ window.__ModuleLoader__.load({
               h('div', null, '3. Permissions：Contents 设为 Read and write；Metadata 自动是 Read-only。'),
               h('div', null, '4. 生成后立刻复制那串 github_pat_…（只显示一次）。'),
               h('div', { style: { marginTop: 10 } },
-                h('a', { href: 'https://github.com/settings/tokens?type=beta', target: '_blank', rel: 'noreferrer', style: { color: '#3b82f6' } }, '打开 tokens 页面')),
+                h('a', { href: 'https://github.com/settings/tokens?type=beta', target: '_blank', rel: 'noreferrer', style: { color: K.accent } }, '打开 tokens 页面')),
             ) : null,
             wizardStep === 2 ? h('div', { style: { fontSize: 12 } },
               [['repo', '仓库（owner/repo 或完整链接）', 'owner/repo'], ['token', '访问令牌', 'github_pat_…']]
@@ -1355,14 +1370,14 @@ window.__ModuleLoader__.load({
             ? {
               position: 'fixed', left: 8, right: 8, bottom: 8, top: 'auto', width: 'auto',
               maxHeight: 'calc(100vh - 16px)', overflowY: 'auto',
-              background: 'Canvas', border: `1px solid ${C.border}`, borderRadius: 12,
+              background: K.surface, border: `1px solid ${C.border}`, borderRadius: 12,
               padding: '14px 14px calc(14px + env(safe-area-inset-bottom))',
-              boxShadow: '0 10px 30px rgba(0,0,0,0.35)', zIndex: 30,
+              boxShadow: K.shadow, zIndex: 30,
             }
             : {
               position: 'absolute', top: 8, right: 8, width: 340,
-              background: 'Canvas', border: `1px solid ${C.border}`,
-              borderRadius: 10, padding: 14, boxShadow: '0 10px 30px rgba(0,0,0,0.25)', zIndex: 20,
+              background: K.surface, border: `1px solid ${C.border}`,
+              borderRadius: 10, padding: 14, boxShadow: K.shadow, zIndex: 20,
             },
         },
           h('div', { style: { display: 'flex', alignItems: 'center', marginBottom: 10 } },
