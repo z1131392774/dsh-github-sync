@@ -27,3 +27,6 @@ jobs:
         run: npm run check
       - name: Offline suite
         run: npm test
+        env:
+          # 空目录：测试不许依赖某台机器上的真实会话
+          DSH_HOME: ${{ runner.temp }}/empty-dsh
