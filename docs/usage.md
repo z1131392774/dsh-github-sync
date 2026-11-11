@@ -22,7 +22,7 @@ The panel is the whole interface. Each side has exactly one action — the left 
 
 Two dropdowns, two jobs. **browse** only decides which sessions the local list shows; it never decides where a download lands. **download to** is the destination for the sessions you tick on the left, it is remembered between visits, and the confirmation dialog repeats it before anything is written.
 
-Below 820 pixels wide the two panes collapse into one, with a switch that stays pinned at the top (`本机 · 12` / `仓库 · 40`). The panel then scrolls as a single page: no inner list has its own scrollbar, so the whole view moves under your thumb. Every row keeps its full width, rows grow to finger height, and the pane's action bar sticks to the bottom of the screen while its list scrolls past.
+Below 820 pixels wide the two panes collapse into one, with a switch that stays pinned at the top (`本机 · 12` / `仓库 · 40`). The panel then scrolls as a single page: no inner list has its own scrollbar, so the whole view moves under your thumb. Every row keeps its full width, rows grow to finger height, and the pane's action bar sticks to the bottom of the screen while its list scrolls past. The settings sheet follows the same rule: near full height, scrolling inside, every field reachable.
 
 ## Sync badges
 
@@ -54,7 +54,7 @@ Long transfers show file-level progress — `12/30 · uploading · f12.bin` — 
 
 ## Deleting
 
-The two sides are independent. Trash opens a confirmation sheet that names the session and says what survives — nothing disappears on a single tap, and the sheet is where the four-second reflex used to live.
+The two sides are independent. Trash opens a confirmation sheet that names the session and says what survives, so nothing disappears on a single tap.
 
 - **Trash on a local row** deletes this machine's session only; the repository keeps it. Attachments nothing else references are collected locally.
 - **Trash on a remote row** deletes it from the repository only; this machine keeps it. Attachments nothing else references are collected remotely.
